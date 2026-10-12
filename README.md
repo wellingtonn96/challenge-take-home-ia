@@ -56,4 +56,16 @@ Client → Go API → Python RAG → PostgreSQL (metadata + pgvector)
 MCP tool ────────────────┘
 ```
 
-Further sections (RAG, API, MCP, tests, full `docker compose` stack) will be added in later milestones.
+### RAG service (E2)
+
+```bash
+cd services/rag
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
+uvicorn rag.app:app --reload --port 8000
+```
+
+Endpoints: `GET /health`, `POST /ingest`, `POST /query` (retrieval only; `answer` is `"TODO"` until generation is wired). See [`services/rag/README.md`](services/rag/README.md).
+
+Further sections (Go API, MCP, tests, full `docker compose` stack) will be added in later milestones.

@@ -1,0 +1,22 @@
+Knowledge Assistant — Product FAQ (sample corpus)
+
+What is the Knowledge Assistant?
+The Knowledge Assistant lets teams query internal documentation using natural language. Answers are grounded in ingested documents via retrieval-augmented generation (RAG).
+
+How does ingestion work?
+Upload or send plain text documents through the ingest API. The system chunks the text, computes embeddings, and stores vectors in PostgreSQL with the pgvector extension.
+
+Which embedding model is used by default?
+The default local model is all-MiniLM-L6-v2, producing 384-dimensional vectors suitable for cosine similarity search.
+
+How do I reset the database during development?
+Run docker compose down -v to remove the volume, then docker compose up -d so schema.sql is applied again on first start.
+
+What is the vector dimension setting?
+VECTOR_DIMENSION in the environment must match the embedding model output and the vector(n) column in schema.sql. For MiniLM-L6-v2, use 384.
+
+Does the Go API talk to the RAG service directly?
+Yes. The public REST API is implemented in Go and calls the internal Python RAG service over HTTP for ingest and query operations.
+
+What is MCP in this project?
+Model Context Protocol exposes a query_knowledge_base tool so external agents can ask questions against the same RAG pipeline without duplicating logic.
