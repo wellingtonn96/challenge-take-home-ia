@@ -1,0 +1,25 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+
+# Go
+services/api/bin/
+services/api/vendor/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+.DS_Store
+
+# Docker / local data
+postgres_data/
