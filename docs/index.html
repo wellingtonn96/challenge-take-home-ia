@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Knowledge Assistant — documentação</title>
+  <meta name="description" content="Documentação do Knowledge Assistant: tutorial passo a passo, deep-dive do código, visão geral e referência da API." />
+  <style>
+    :root {
+      --bg: #0c1016; --surface: #161f2d; --surface2: #1f2b3d; --text: #e6ebf2; --muted: #97a6bb;
+      --accent: #5b9fd4; --py: #6bcf8e; --go: #e0925c; --db: #a78bfa; --llm: #e8b84a;
+      --border: #2a374b; --radius: 14px;
+      --font: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: var(--font); line-height: 1.6; color: var(--text);
+      background:
+        radial-gradient(1100px 480px at 8% -8%, rgba(91,159,212,.13), transparent 55%),
+        radial-gradient(800px 400px at 100% 0%, rgba(107,207,142,.07), transparent 50%),
+        var(--bg);
+    }
+    a { color: inherit; text-decoration: none; }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 3rem 1.25rem 4rem; }
+    .eyebrow { font-size: .75rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--accent); margin: 0 0 .6rem; }
+    h1 { margin: 0 0 .8rem; font-size: clamp(1.8rem, 4.5vw, 2.6rem); line-height: 1.15; letter-spacing: -.03em; }
+    .lead { margin: 0; color: #c3cedd; max-width: 60ch; font-size: 1.05rem; }
+    .chips { display: flex; flex-wrap: wrap; gap: .45rem; margin: 1.3rem 0 2.4rem; }
+    .chip { font-size: .74rem; font-weight: 600; padding: .3rem .7rem; border-radius: 999px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); }
+    .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    a.card {
+      display: block; padding: 1.2rem 1.25rem; border-radius: var(--radius);
+      background: var(--surface); border: 1px solid var(--border); border-top-width: 3px;
+      transition: transform .15s, border-color .15s, background .15s;
+    }
+    a.card:hover { transform: translateY(-3px); background: #1a2536; }
+    a.card.t { border-top-color: var(--py); }
+    a.card.d { border-top-color: var(--db); }
+    a.card.o { border-top-color: var(--accent); }
+    a.card.a { border-top-color: var(--go); }
+    .tag { font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    a.card h2 { margin: .3rem 0 .4rem; font-size: 1.2rem; letter-spacing: -.01em; }
+    a.card p { margin: 0; color: #bcc8d9; font-size: .93rem; }
+    a.card .go { display: inline-block; margin-top: .8rem; font-size: .85rem; font-weight: 600; color: var(--accent); }
+    footer { margin-top: 3rem; padding-top: 1.2rem; border-top: 1px solid var(--border); color: var(--muted); font-size: .88rem; }
+    footer code { background: var(--surface2); padding: .1em .4em; border-radius: 5px; font-size: .9em; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="eyebrow">Take-home · IA</p>
+    <h1>Knowledge Assistant</h1>
+    <p class="lead">
+      Assistente de conhecimento com RAG: você pergunta em linguagem natural, o sistema recupera trechos dos
+      seus documentos e o LLM responde só com esse contexto. Python, Go, PostgreSQL com pgvector, Ollama e MCP.
+    </p>
+    <div class="chips">
+      <span class="chip">Python RAG</span>
+      <span class="chip">Go API</span>
+      <span class="chip">pgvector 384-d</span>
+      <span class="chip">Ollama</span>
+      <span class="chip">MCP stdio</span>
+      <span class="chip">Docker Compose</span>
+    </div>
+
+    <div class="grid">
+      <a class="card t" href="tutorial.html">
+        <span class="tag">Comece por aqui</span>
+        <h2>Tutorial passo a passo</h2>
+        <p>Construa o sistema do zero em 12 passos, com laboratórios interativos e um checkpoint ao final de cada etapa.</p>
+        <span class="go">Abrir tutorial →</span>
+      </a>
+      <a class="card d" href="deep-dive.html">
+        <span class="tag">Para quem quer detalhes</span>
+        <h2>Deep-dive</h2>
+        <p>O código real, conceito por conceito, com as decisões de projeto e os trade-offs.</p>
+        <span class="go">Abrir deep-dive →</span>
+      </a>
+      <a class="card o" href="overview.html">
+        <span class="tag">Visão rápida</span>
+        <h2>Visão geral</h2>
+        <p>Marcos do desafio, arquitetura clicável, fluxos de ingestão e consulta, e cobertura de testes.</p>
+        <span class="go">Abrir visão geral →</span>
+      </a>
+      <a class="card a" href="https://github.com/wellingtonn96/challenge-take-home-ia/blob/challenge/wellington/docs/api.md">
+        <span class="tag">Referência</span>
+        <h2>API REST (Go)</h2>
+        <p>Endpoints públicos, formatos de requisição e resposta e códigos de erro.</p>
+        <span class="go">Abrir referência →</span>
+      </a>
+    </div>
+
+    <footer>
+      Código-fonte e instruções de execução no <code>README.md</code> do repositório.
+    </footer>
+  </div>
+</body>
+</html>

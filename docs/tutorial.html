@@ -1,0 +1,2653 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tutorial — Construa um Assistente de Conhecimento com RAG, passo a passo</title>
+  <meta name="description" content="Tutorial prático: PostgreSQL + pgvector, pipeline RAG em Python, API em Go e ferramenta MCP, explicados do zero." />
+  <style>
+    :root {
+      --bg: #0c1016;
+      --bg2: #121924;
+      --surface: #161f2d;
+      --surface2: #1f2b3d;
+      --text: #e6ebf2;
+      --muted: #97a6bb;
+      --accent: #5b9fd4;
+      --go: #e0925c;
+      --py: #6bcf8e;
+      --db: #a78bfa;
+      --llm: #e8b84a;
+      --mcp: #f472b6;
+      --border: #2a374b;
+      --code-bg: #0a0e13;
+      --radius: 12px;
+      --font: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+      --mono: "Cascadia Code", "JetBrains Mono", Consolas, ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 1.2rem; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      font-size: 17px;
+      line-height: 1.7;
+      color: var(--text);
+      background:
+        radial-gradient(1100px 480px at 8% -8%, rgba(91,159,212,.13), transparent 55%),
+        radial-gradient(800px 400px at 100% 0%, rgba(107,207,142,.07), transparent 50%),
+        var(--bg);
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    ::selection { background: rgba(91,159,212,.35); }
+
+    #progress {
+      position: fixed; top: 0; left: 0; height: 3px; width: 0;
+      background: linear-gradient(90deg, var(--accent), var(--py));
+      z-index: 100;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 270px minmax(0, 1fr);
+      gap: 2.5rem;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 1.5rem 1.25rem 5rem;
+    }
+    @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } aside.sidebar { display: none; } }
+
+    aside.sidebar {
+      position: sticky; top: 1rem; align-self: start;
+      max-height: calc(100vh - 2rem); overflow-y: auto;
+      padding-right: .5rem; font-size: .88rem;
+    }
+    aside.sidebar .brand { font-weight: 700; margin-bottom: .75rem; letter-spacing: -.01em; }
+    aside.sidebar ol { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--border); }
+    aside.sidebar li a {
+      display: block; padding: .32rem .8rem; color: var(--muted);
+      border-left: 2px solid transparent; margin-left: -1px;
+    }
+    aside.sidebar li a:hover { color: var(--text); text-decoration: none; }
+    aside.sidebar li a.active { color: var(--text); border-left-color: var(--accent); background: rgba(91,159,212,.07); }
+
+    details.mobile-toc {
+      display: none; margin-bottom: 1.5rem; border: 1px solid var(--border);
+      border-radius: var(--radius); background: var(--surface); padding: .6rem 1rem; font-size: .9rem;
+    }
+    details.mobile-toc ol { margin: .6rem 0 .2rem; padding-left: 1.2rem; }
+    @media (max-width: 1000px) { details.mobile-toc { display: block; } }
+
+    main { min-width: 0; }
+
+    header.hero {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 2.2rem 2rem 1.8rem;
+      margin-bottom: 2.5rem;
+      background: linear-gradient(155deg, #1d2d44 0%, #121924 60%);
+    }
+    .eyebrow {
+      font-size: .75rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+      color: var(--accent); margin: 0 0 .6rem;
+    }
+    header.hero h1 {
+      margin: 0 0 .8rem; font-size: clamp(1.7rem, 4vw, 2.4rem); line-height: 1.2; letter-spacing: -.03em;
+    }
+    header.hero p.lead { margin: 0; color: #c3cedd; max-width: 62ch; }
+    .chips { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: 1.2rem; }
+    .chip {
+      font-size: .74rem; font-weight: 600; padding: .3rem .7rem; border-radius: 999px;
+      border: 1px solid var(--border); background: var(--surface2); color: var(--muted);
+    }
+
+    section { margin-bottom: 3.4rem; }
+    section > h2 {
+      font-size: 1.65rem; line-height: 1.25; letter-spacing: -.02em; margin: 0 0 1rem;
+      padding-bottom: .55rem; border-bottom: 1px solid var(--border);
+    }
+    .step-tag {
+      display: inline-block; font-family: var(--mono); font-size: .68rem; font-weight: 700;
+      letter-spacing: .06em; text-transform: uppercase; vertical-align: .35em; margin-right: .6rem;
+      padding: .18rem .55rem; border-radius: 6px; color: #0c1016; background: var(--accent);
+    }
+    h3 { font-size: 1.15rem; margin: 2rem 0 .5rem; letter-spacing: -.01em; }
+    p { margin: .85rem 0; }
+    ul, ol { padding-left: 1.4rem; }
+    li { margin: .35rem 0; }
+    strong { color: #fff; }
+    em { color: #d9e2ef; }
+
+    code {
+      font-family: var(--mono); font-size: .86em; background: var(--surface2);
+      padding: .12em .4em; border-radius: 5px; color: #d6e4f7;
+    }
+    pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+    /* Sem ligaduras: ">=" e "->" devem aparecer exatamente como são digitados. */
+    code, pre, textarea, .chunk { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
+
+    /* ---------- code blocks ---------- */
+    figure.code {
+      margin: 1.2rem 0; border: 1px solid var(--border); border-radius: var(--radius);
+      background: var(--code-bg); overflow: hidden;
+    }
+    figure.code figcaption {
+      display: flex; align-items: center; gap: .6rem; padding: .45rem .8rem;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      font-size: .78rem; color: var(--muted);
+    }
+    figcaption .fname { font-family: var(--mono); color: var(--text); flex: 1; overflow-wrap: anywhere; }
+    figcaption .lang {
+      font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+      padding: .12rem .45rem; border-radius: 4px; border: 1px solid var(--border);
+    }
+    figure.code[data-lang="python"] .lang { color: var(--py); }
+    figure.code[data-lang="go"] .lang { color: var(--go); }
+    figure.code[data-lang="sql"] .lang { color: var(--db); }
+    figure.code[data-lang="bash"] .lang { color: var(--llm); }
+    figure.code[data-lang="out"] .lang { color: var(--muted); }
+    figcaption button.copy {
+      font: inherit; font-size: .72rem; cursor: pointer; color: var(--muted);
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: .15rem .55rem;
+    }
+    figcaption button.copy:hover { color: var(--text); }
+    figure.code pre {
+      margin: 0; padding: 1rem 1.1rem; overflow-x: auto;
+      font-family: var(--mono); font-size: .82rem; line-height: 1.6; tab-size: 4;
+    }
+    figure.code[data-lang="out"] pre { color: #a9b8cc; }
+    .tk-c { color: #6f8097; font-style: italic; }
+    .tk-s { color: #a6e3a1; }
+    .tk-k { color: #c4a7f5; }
+    .tk-n { color: #f0b987; }
+
+    /* ---------- callouts ---------- */
+    .callout {
+      margin: 1.4rem 0; padding: .95rem 1.15rem; border-radius: var(--radius);
+      border: 1px solid var(--border); border-left-width: 4px; background: var(--surface);
+    }
+    .callout > :first-child { margin-top: 0; }
+    .callout > :last-child { margin-bottom: 0; }
+    .callout .ct {
+      display: block; font-size: .72rem; font-weight: 800; letter-spacing: .08em;
+      text-transform: uppercase; margin-bottom: .3rem;
+    }
+    .callout.concept { border-left-color: var(--accent); }
+    .callout.concept .ct { color: var(--accent); }
+    .callout.tip { border-left-color: var(--py); }
+    .callout.tip .ct { color: var(--py); }
+    .callout.warn { border-left-color: var(--llm); background: rgba(232,184,74,.06); }
+    .callout.warn .ct { color: var(--llm); }
+    .callout.check { border-left-color: var(--db); background: rgba(167,139,250,.07); }
+    .callout.check .ct { color: var(--db); }
+
+    /* ---------- tables ---------- */
+    .table-wrap { overflow-x: auto; margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); }
+    table { width: 100%; border-collapse: collapse; font-size: .9rem; line-height: 1.5; }
+    th, td { padding: .6rem .8rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    th { background: var(--surface); color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; }
+
+    /* ---------- cards / pipelines ---------- */
+    .cards { display: grid; gap: .9rem; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin: 1.2rem 0; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1rem 1.05rem; font-size: .92rem; line-height: 1.55;
+    }
+    .card h4 { margin: 0 0 .35rem; font-size: 1rem; }
+    .card p { margin: .3rem 0; color: #bcc8d9; }
+    .card .where { font-size: .78rem; color: var(--muted); margin-top: .6rem; }
+    .card.c1 { border-top: 3px solid var(--py); }
+    .card.c2 { border-top: 3px solid var(--db); }
+    .card.c3 { border-top: 3px solid var(--accent); }
+    .card.c4 { border-top: 3px solid var(--go); }
+    .card.c5 { border-top: 3px solid var(--llm); }
+
+    .pipeline-box { margin: 1.2rem 0; padding: 1rem 1.1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+    .pipeline-box h4 { margin: 0 0 .7rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+    .pipe { display: flex; flex-wrap: wrap; align-items: stretch; gap: .35rem; }
+    .pipe .st {
+      flex: 1 1 105px; padding: .6rem .65rem; border-radius: 10px; font-size: .8rem; line-height: 1.4;
+      background: var(--surface2); border: 1px solid var(--border);
+    }
+    .pipe .st b { display: block; font-size: .85rem; color: #fff; margin-bottom: .1rem; }
+    .pipe .ar { align-self: center; color: var(--muted); }
+    .pipe .st.db { border-color: #5d4b99; }
+    .pipe .st.llm { border-color: #8a6f27; }
+
+    .arch { margin: 1.2rem 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .8rem; }
+    .arch svg { width: 100%; height: auto; display: block; }
+    .arch text { font-family: var(--font); fill: var(--text); }
+    .arch .sub { fill: var(--muted); font-size: 11.5px; }
+    .arch .ttl { font-size: 14px; font-weight: 700; }
+    .arch .lbl { fill: var(--muted); font-size: 11px; }
+
+    /* ---------- labs ---------- */
+    .lab {
+      margin: 1.6rem 0; border: 1px solid #3a4f6c; border-radius: var(--radius);
+      background: linear-gradient(180deg, #17243a, #131c2b); padding: 1rem 1.15rem 1.15rem;
+    }
+    .lab-head { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: .7rem; font-size: .85rem; }
+    .lab-head strong { color: var(--accent); letter-spacing: .02em; }
+    .lab-head span { color: var(--muted); }
+    .lab textarea {
+      width: 100%; background: var(--code-bg); color: var(--text); border: 1px solid var(--border);
+      border-radius: 8px; padding: .65rem .75rem; font-family: var(--mono); font-size: .8rem; line-height: 1.5; resize: vertical;
+    }
+    .controls { display: grid; gap: .8rem 1.4rem; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); margin: .8rem 0; }
+    .controls label { font-size: .82rem; color: var(--muted); display: block; }
+    .controls label output { color: var(--text); font-family: var(--mono); margin-left: .4rem; }
+    .controls input[type=range] { width: 100%; accent-color: var(--accent); }
+    .lab-stats { font-size: .84rem; color: var(--muted); margin: .4rem 0 .7rem; }
+    .lab-stats b { color: var(--text); }
+    .lab-stats .err { color: #ff8f8f; font-family: var(--mono); }
+    .chunks { display: grid; gap: .5rem; }
+    .chunk {
+      display: grid; grid-template-columns: 2.6rem 1fr; gap: .6rem; align-items: start;
+      background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .65rem;
+      font-family: var(--mono); font-size: .76rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere;
+    }
+    .chunk .ix { color: var(--accent); font-weight: 700; }
+    .chunk .ov { background: rgba(232,184,74,.28); border-radius: 3px; color: #ffe9b0; }
+    .legend { font-size: .78rem; color: var(--muted); margin-top: .6rem; }
+    .legend .ov { background: rgba(232,184,74,.28); color: #ffe9b0; padding: 0 .3rem; border-radius: 3px; }
+
+    .sim-grid { display: grid; gap: 1rem; grid-template-columns: minmax(0, 300px) 1fr; align-items: center; }
+    @media (max-width: 640px) { .sim-grid { grid-template-columns: 1fr; } }
+    .sim-grid svg { width: 100%; height: auto; background: var(--code-bg); border-radius: 50%; border: 1px solid var(--border); }
+    .rank { display: grid; gap: .45rem; }
+    .rank .row { font-size: .84rem; }
+    .rank .row .top { display: flex; justify-content: space-between; gap: .5rem; }
+    .rank .row .val { font-family: var(--mono); color: var(--muted); }
+    .rank .bar { height: 7px; border-radius: 99px; background: var(--surface2); overflow: hidden; margin-top: .2rem; }
+    .rank .bar span { display: block; height: 100%; background: var(--accent); transition: width .12s; }
+    .rank .row.best .bar span { background: var(--py); }
+    .rank .row.best .name { color: var(--py); font-weight: 700; }
+
+    footer.site {
+      margin-top: 3rem; padding-top: 1.3rem; border-top: 1px solid var(--border);
+      color: var(--muted); font-size: .88rem;
+    }
+    kbd { font-family: var(--mono); font-size: .8em; padding: .08em .4em; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; background: var(--surface2); }
+  </style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+  <aside class="sidebar" aria-label="Sumário">
+    <div class="brand">Tutorial RAG</div>
+    <ol id="toc"></ol>
+  </aside>
+
+  <main>
+    <details class="mobile-toc"><summary>Sumário</summary><ol id="toc-m"></ol></details>
+
+    <header class="hero">
+      <p class="eyebrow">Tutorial prático · do zero ao funcionando</p>
+      <h1>Construa um Assistente de Conhecimento com RAG, passo a passo</h1>
+      <p class="lead">
+        Você vai montar um sistema que responde perguntas usando os <em>seus</em> documentos:
+        PostgreSQL com pgvector, um serviço Python que recupera e gera respostas, uma API pública em Go
+        e uma ferramenta MCP para agentes de IA. Cada passo explica o <strong>porquê</strong> antes do
+        <strong>como</strong> e termina com um teste, para você saber que deu certo antes de seguir.
+      </p>
+      <div class="chips">
+        <span class="chip">⏱ 2 a 3 horas</span>
+        <span class="chip">Nível intermediário</span>
+        <span class="chip">Python 3.11+</span>
+        <span class="chip">Go 1.22+</span>
+        <span class="chip">PostgreSQL 16 + pgvector</span>
+        <span class="chip">Ollama</span>
+        <span class="chip">MCP</span>
+      </div>
+    </header>
+
+    <section id="comeco" data-toc="Antes de começar">
+      <h2>Antes de começar</h2>
+      <p>
+        Este tutorial foi escrito para quem sabe um pouco de Python e de HTTP, mas <strong>nunca montou
+        um sistema de IA</strong>. Você não precisa entender de machine learning: vamos tratar o modelo
+        de embeddings e o LLM como "caixas" com entrada e saída bem definidas, e gastar nossa energia no que
+        é engenharia de verdade: dados, fronteiras entre serviços, erros e testes.
+      </p>
+
+      <h3>O que você terá no final</h3>
+      <p>Um comando como este vai devolver uma resposta baseada nos seus documentos, junto com os trechos que a sustentam:</p>
+<figure class="code" data-lang="bash"><figcaption><span class="fname">terminal</span><span class="lang">Terminal</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>curl -s http://localhost:8080/query \
+  -H "Content-Type: application/json" \
+  -d '{"question":"How do I reset the database during development?"}'</code></pre></figure>
+<figure class="code" data-lang="out"><figcaption><span class="fname">resposta (resumida)</span><span class="lang">Saída</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>{
+  "answer": "Run docker compose down -v to remove the volume, then docker compose up -d ...",
+  "sources": [
+    { "document_id": "…", "chunk_index": 1, "score": 0.33, "content": "…How do I reset the database…" }
+  ]
+}</code></pre></figure>
+
+      <h3>Pré-requisitos</h3>
+      <ul>
+        <li><strong>Docker Desktop</strong> com Compose v2 (<code>docker compose version</code>).</li>
+        <li><strong>Python 3.11+</strong> no seu computador (para rodar e testar o serviço RAG).</li>
+        <li><strong>curl</strong> e um terminal bash (Git Bash no Windows funciona bem).</li>
+        <li><strong>Go 1.22+</strong> é opcional: o Docker compila a API Go para você.</li>
+        <li>Uns <strong>8 GB livres</strong> em disco (imagens, PyTorch, modelo de linguagem) e paciência na primeira execução: os downloads são o passo mais demorado.</li>
+      </ul>
+
+      <h3>Como ler</h3>
+      <p>Você vai encontrar quatro tipos de caixa ao longo do texto:</p>
+      <div class="callout concept"><span class="ct">Conceito</span>Uma ideia que vale a pena entender, não só copiar.</div>
+      <div class="callout warn"><span class="ct">Armadilha</span>Um erro comum, quase sempre com a causa e a correção.</div>
+      <div class="callout tip"><span class="ct">Dica</span>Um atalho ou uma alternativa útil.</div>
+      <div class="callout check"><span class="ct">Checkpoint</span>Um comando para você confirmar que o passo funcionou. <strong>Não pule</strong>: é aqui que se descobre o erro enquanto ele ainda é pequeno.</div>
+
+      <div class="callout tip">
+        <span class="ct">Sobre o código</span>
+        O código deste tutorial é uma versão <strong>enxuta</strong> do repositório <code>challenge-take-home-ia</code>
+        (sem tracing, logs em memória e CORS, para você enxergar o essencial). Os arquivos Python e Go aqui foram
+        executados: os testes passam, o pipeline (ingestão, busca e geração) foi rodado ponta a ponta contra um Postgres e um Ollama reais,
+        e a API Go compila e trata os erros descritos. Se quiser ver a versão completa,
+        com observabilidade, abra o <a href="deep-dive.html">deep-dive</a>.
+      </div>
+
+      <h3>Estrutura de pastas</h3>
+      <p>Crie uma pasta vazia (por exemplo <code>knowledge-assistant/</code>) e vá preenchendo conforme os passos. Ao final, ela terá este formato:</p>
+<figure class="code" data-lang="out"><figcaption><span class="fname">knowledge-assistant/</span><span class="lang">Saída</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>knowledge-assistant/
+├── .env                      ← cópia de .env.example (nunca vai para o git)
+├── .env.example
+├── docker-compose.yml
+├── data/sample/faq.txt       ← o documento de exemplo
+├── db/schema.sql
+└── services/
+    ├── rag/                  ← Python: chunk, embed, busca, geração, MCP
+    │   ├── pyproject.toml
+    │   ├── Dockerfile
+    │   ├── rag/              (config, db, chunking, embedder, repository,
+    │   │                      errors, prompt, llm, answer, schemas, app, mcp)
+    │   └── tests/
+    └── api/                  ← Go: a API pública
+        ├── go.mod
+        ├── main.go
+        └── Dockerfile</code></pre></figure>
+    </section>
+
+    <section id="ideia" data-toc="1. A ideia por trás do RAG">
+      <h2>1. A ideia por trás do RAG</h2>
+
+      <h3>Por que não perguntar direto para um LLM?</h3>
+      <p>
+        Um modelo de linguagem é ótimo em escrever texto plausível, mas, sozinho, tem três problemas
+        quando o assunto é a <em>sua</em> documentação:
+      </p>
+      <ul>
+        <li><strong>Ele não conhece seus dados.</strong> O que está na sua wiki, nos seus contratos ou no seu FAQ interno nunca fez parte do treino.</li>
+        <li><strong>Ele inventa.</strong> Sem a informação, ele ainda responde, e com muita confiança. Isso se chama alucinação.</li>
+        <li><strong>Ele não cita fonte.</strong> Você não tem como conferir de onde veio cada afirmação.</li>
+      </ul>
+      <p>
+        A solução é <strong>RAG</strong> (<em>Retrieval-Augmented Generation</em>, geração aumentada por recuperação).
+        Pense numa <strong>prova com consulta</strong>: em vez de exigir que o aluno decore tudo, você deixa
+        o livro aberto. A pessoa primeiro <em>procura</em> as páginas certas e só então <em>escreve</em> a resposta
+        com base nelas. Na prática são duas fases:
+      </p>
+
+      <div class="pipeline-box">
+        <h4>Fase 1 · Ingestão (acontece uma vez por documento)</h4>
+        <div class="pipe">
+          <div class="st"><b>Texto</b>o documento inteiro</div><span class="ar">→</span>
+          <div class="st"><b>Chunks</b>pedaços de ~500 caracteres</div><span class="ar">→</span>
+          <div class="st"><b>Embeddings</b>cada chunk vira um vetor</div><span class="ar">→</span>
+          <div class="st db"><b>pgvector</b>texto + vetor guardados</div>
+        </div>
+      </div>
+      <div class="pipeline-box">
+        <h4>Fase 2 · Consulta (acontece a cada pergunta)</h4>
+        <div class="pipe">
+          <div class="st"><b>Pergunta</b>em linguagem natural</div><span class="ar">→</span>
+          <div class="st"><b>Embedding</b>a pergunta vira vetor</div><span class="ar">→</span>
+          <div class="st db"><b>Top-k</b>os chunks mais parecidos</div><span class="ar">→</span>
+          <div class="st"><b>Prompt</b>chunks + pergunta + regras</div><span class="ar">→</span>
+          <div class="st llm"><b>LLM</b>responde só com o contexto</div>
+        </div>
+      </div>
+
+      <h3>Os cinco conceitos que sustentam tudo</h3>
+      <p>Se você entender estes cinco, o resto do tutorial é só encaixar peças.</p>
+      <div class="cards">
+        <div class="card c1">
+          <h4>1 · Chunk</h4>
+          <p>Um pedaço de texto pequeno o bastante para ter <em>um assunto</em>. É a unidade que a busca recupera e que o LLM lê.</p>
+          <p class="where">Passo 3 · <code>chunking.py</code></p>
+        </div>
+        <div class="card c2">
+          <h4>2 · Embedding</h4>
+          <p>Uma lista de números (aqui, 384) que representa o <em>significado</em> de um texto. Textos com significado parecido ficam com números parecidos.</p>
+          <p class="where">Passo 4 · <code>embedder.py</code></p>
+        </div>
+        <div class="card c3">
+          <h4>3 · Similaridade</h4>
+          <p>Uma conta que diz o quão perto dois vetores estão. Usamos o <strong>cosseno</strong>: perto de 1 = mesmo sentido, perto de 0 = sem relação.</p>
+          <p class="where">Passos 4 e 6 · operador <code>&lt;=&gt;</code></p>
+        </div>
+        <div class="card c4">
+          <h4>4 · Banco vetorial</h4>
+          <p>Um banco que guarda vetores e acha os vizinhos mais próximos rápido, usando um índice aproximado (ANN). Aqui: Postgres + <code>pgvector</code>.</p>
+          <p class="where">Passos 1, 5 e 6 · <code>schema.sql</code></p>
+        </div>
+        <div class="card c5">
+          <h4>5 · Grounding</h4>
+          <p>Obrigar o LLM a responder <em>somente</em> com o contexto entregue, e dizer "não sei" quando faltar informação.</p>
+          <p class="where">Passo 7 · <code>prompt.py</code></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="mapa" data-toc="2. O que vamos construir">
+      <h2>2. O que vamos construir</h2>
+      <p>Vamos separar o sistema em peças pequenas, cada uma com uma responsabilidade clara:</p>
+
+      <div class="arch">
+        <svg viewBox="0 0 900 340" role="img" aria-label="Arquitetura: cliente chama a API Go, que chama o serviço Python RAG, que usa Postgres com pgvector e o Ollama. O MCP importa a mesma função run_query do serviço Python.">
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#97a6bb" />
+            </marker>
+          </defs>
+          <!-- client -->
+          <rect x="15" y="130" width="140" height="64" rx="10" fill="#1f2b3d" stroke="#2a374b"/>
+          <text x="85" y="157" text-anchor="middle" class="ttl">Cliente</text>
+          <text x="85" y="177" text-anchor="middle" class="sub">curl · interface web</text>
+          <!-- go -->
+          <rect x="215" y="130" width="150" height="64" rx="10" fill="#2a2018" stroke="#e0925c"/>
+          <text x="290" y="157" text-anchor="middle" class="ttl">API em Go</text>
+          <text x="290" y="177" text-anchor="middle" class="sub">:8080 · pública</text>
+          <!-- python -->
+          <rect x="435" y="130" width="170" height="64" rx="10" fill="#14281d" stroke="#6bcf8e"/>
+          <text x="520" y="157" text-anchor="middle" class="ttl">Serviço RAG (Python)</text>
+          <text x="520" y="177" text-anchor="middle" class="sub">:8000 · interna</text>
+          <!-- postgres -->
+          <rect x="690" y="30" width="195" height="72" rx="10" fill="#211b38" stroke="#a78bfa"/>
+          <text x="787" y="60" text-anchor="middle" class="ttl">PostgreSQL + pgvector</text>
+          <text x="787" y="80" text-anchor="middle" class="sub">documents · chunks · embeddings</text>
+          <!-- ollama -->
+          <rect x="690" y="222" width="195" height="72" rx="10" fill="#2b2412" stroke="#e8b84a"/>
+          <text x="787" y="252" text-anchor="middle" class="ttl">Ollama (LLM)</text>
+          <text x="787" y="272" text-anchor="middle" class="sub">:11434 · gera a resposta</text>
+          <!-- claude + mcp -->
+          <rect x="215" y="250" width="150" height="56" rx="10" fill="#1f2b3d" stroke="#2a374b"/>
+          <text x="290" y="274" text-anchor="middle" class="ttl">Claude Desktop</text>
+          <text x="290" y="292" text-anchor="middle" class="sub">ou outro agente</text>
+          <rect x="435" y="250" width="170" height="56" rx="10" fill="#2e1a28" stroke="#f472b6" stroke-dasharray="5 4"/>
+          <text x="520" y="274" text-anchor="middle" class="ttl">MCP (stdio)</text>
+          <text x="520" y="292" text-anchor="middle" class="sub">python -m rag.mcp</text>
+          <!-- arrows -->
+          <line x1="155" y1="162" x2="213" y2="162" stroke="#97a6bb" stroke-width="1.6" marker-end="url(#arr)"/>
+          <line x1="365" y1="162" x2="433" y2="162" stroke="#97a6bb" stroke-width="1.6" marker-end="url(#arr)"/>
+          <text x="399" y="152" text-anchor="middle" class="lbl">HTTP</text>
+          <line x1="605" y1="146" x2="688" y2="86" stroke="#97a6bb" stroke-width="1.6" marker-end="url(#arr)"/>
+          <text x="660" y="112" text-anchor="middle" class="lbl">SQL</text>
+          <line x1="605" y1="178" x2="688" y2="240" stroke="#97a6bb" stroke-width="1.6" marker-end="url(#arr)"/>
+          <text x="663" y="222" text-anchor="middle" class="lbl">HTTP</text>
+          <line x1="365" y1="278" x2="433" y2="278" stroke="#f472b6" stroke-width="1.6" marker-end="url(#arr)"/>
+          <text x="399" y="270" text-anchor="middle" class="lbl">stdio</text>
+          <line x1="520" y1="250" x2="520" y2="196" stroke="#f472b6" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+          <text x="590" y="228" text-anchor="middle" class="lbl">importa run_query()</text>
+        </svg>
+      </div>
+
+      <p>Três decisões de desenho explicam quase tudo que você vai ver no código:</p>
+      <ol>
+        <li>
+          <strong>A API Go é a única porta pública.</strong> Ela valida a entrada, devolve erros num formato estável
+          e esconde o serviço Python. Se amanhã você trocar o Python por outra coisa, o contrato público não muda.
+        </li>
+        <li>
+          <strong>O serviço Python é interno e concentra a inteligência.</strong> Chunking, embeddings, busca e geração
+          vivem num só lugar. A API Go <em>chama</em> esse serviço, não reimplementa nada.
+        </li>
+        <li>
+          <strong>O MCP não é uma segunda implementação.</strong> Ele importa a mesma função <code>run_query()</code> que o
+          endpoint <code>POST /query</code> usa. Um único caminho de consulta significa um único lugar para corrigir bugs.
+        </li>
+      </ol>
+
+      <div class="table-wrap"><table>
+        <thead><tr><th>Peça</th><th>Tecnologia</th><th>Responsabilidade</th></tr></thead>
+        <tbody>
+          <tr><td>Banco</td><td>PostgreSQL 16 + pgvector</td><td>Metadados, texto dos chunks e vetores, num lugar só</td></tr>
+          <tr><td>RAG</td><td>Python + FastAPI</td><td>Chunk → embed → buscar → montar prompt → chamar o LLM</td></tr>
+          <tr><td>API pública</td><td>Go (só biblioteca padrão)</td><td>Validar, repassar, padronizar erros</td></tr>
+          <tr><td>LLM</td><td>Ollama (<code>llama3.2</code>)</td><td>Escrever a resposta a partir do contexto</td></tr>
+          <tr><td>Agentes</td><td>MCP via stdio</td><td>Expor a consulta como ferramenta <code>query_knowledge_base</code></td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>O documento de exemplo</h3>
+      <p>
+        Precisamos de algo para perguntar. Crie <code>data/sample/faq.txt</code> com o texto abaixo. É um pequeno FAQ
+        sobre o próprio projeto, o que torna as respostas fáceis de conferir.
+      </p>
+<figure class="code" data-lang="text"><figcaption><span class="fname">data/sample/faq.txt</span><span class="lang">Texto</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>Knowledge Assistant — Product FAQ (sample corpus)
+
+What is the Knowledge Assistant?
+The Knowledge Assistant lets teams query internal documentation using natural language. Answers are grounded in ingested documents via retrieval-augmented generation (RAG).
+
+How does ingestion work?
+Upload or send plain text documents through the ingest API. The system chunks the text, computes embeddings, and stores vectors in PostgreSQL with the pgvector extension.
+
+Which embedding model is used by default?
+The default local model is all-MiniLM-L6-v2, producing 384-dimensional vectors suitable for cosine similarity search.
+
+How do I reset the database during development?
+Run docker compose down -v to remove the volume, then docker compose up -d so schema.sql is applied again on first start.
+
+What is the vector dimension setting?
+VECTOR_DIMENSION in the environment must match the embedding model output and the vector(n) column in schema.sql. For MiniLM-L6-v2, use 384.
+
+Does the Go API talk to the RAG service directly?
+Yes. The public REST API is implemented in Go and calls the internal Python RAG service over HTTP for ingest and query operations.
+
+What is MCP in this project?
+Model Context Protocol exposes a query_knowledge_base tool so external agents can ask questions against the same RAG pipeline without duplicating logic.</code></pre></figure>
+      <div class="callout warn">
+        <span class="ct">Armadilha: o idioma do modelo</span>
+        O modelo de embeddings que vamos usar (<code>all-MiniLM-L6-v2</code>) foi treinado majoritariamente em
+        <strong>inglês</strong>. Por isso o FAQ e as perguntas deste tutorial estão em inglês. Para documentos em português,
+        troque por <code>paraphrase-multilingual-MiniLM-L12-v2</code>, que também gera 384 dimensões, então o schema
+        não muda (confirme com <code>model.get_sentence_embedding_dimension()</code>). Falaremos de como trocar de modelo com segurança no passo 4.
+      </div>
+    </section>
+
+    <section id="passo1" data-toc="Passo 1 · O banco">
+      <h2><span class="step-tag">Passo 1</span>O banco: Postgres com pgvector</h2>
+      <p>
+        Começamos pelo alicerce, porque tudo depois depende dele. O <strong>pgvector</strong> é uma extensão do
+        PostgreSQL que adiciona o tipo <code>vector(n)</code> e operadores de distância. A vantagem de usá-lo em vez
+        de um banco vetorial dedicado: seus metadados e seus vetores ficam no <em>mesmo</em> banco, com transações,
+        chaves estrangeiras e <code>DELETE ... CASCADE</code> funcionando como você já conhece.
+      </p>
+
+      <h3>Por que três tabelas?</h3>
+      <ul>
+        <li><code>documents</code>: um registro por documento (título, origem, datas). É o que você lista e apaga.</li>
+        <li><code>chunks</code>: os pedaços de texto. É a <em>unidade de recuperação</em>: o que a busca devolve e o que o LLM lê.</li>
+        <li><code>embeddings</code>: um vetor por chunk. Fica separado para que você possa <strong>reembedar</strong> (trocar de modelo) sem tocar no texto.</li>
+      </ul>
+      <p>As três se encadeiam com <code>ON DELETE CASCADE</code>: apagar um documento apaga seus chunks, que apagam seus vetores. Nada fica órfão.</p>
+
+      <p>Crie <code>db/schema.sql</code>:</p>
+<figure class="code" data-lang="sql"><figcaption><span class="fname">db/schema.sql</span><span class="lang">SQL</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>CREATE EXTENSION IF NOT EXISTS vector;
+
+-- documents: um registro por documento (metadados)
+CREATE TABLE documents (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title         TEXT NOT NULL,
+    source_uri    TEXT,
+    content_type  TEXT NOT NULL DEFAULT 'text/plain',
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_documents_created_at ON documents (created_at DESC);
+
+-- chunks: pedaços de texto (a unidade de recuperação)
+CREATE TABLE chunks (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    document_id  UUID NOT NULL REFERENCES documents (id) ON DELETE CASCADE,
+    chunk_index  INTEGER NOT NULL CHECK (chunk_index &gt;= 0),
+    content      TEXT NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (document_id, chunk_index)
+);
+
+-- embeddings: um vetor por chunk. 384 = saída do all-MiniLM-L6-v2
+CREATE TABLE embeddings (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    chunk_id    UUID NOT NULL UNIQUE REFERENCES chunks (id) ON DELETE CASCADE,
+    embedding   vector(384) NOT NULL,
+    model_name  TEXT NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Índice ANN (vizinhos aproximados) com distância de cosseno
+CREATE INDEX idx_embeddings_embedding_hnsw
+    ON embeddings USING hnsw (embedding vector_cosine_ops);</code></pre></figure>
+      <div class="callout concept">
+        <span class="ct">Conceito: o índice HNSW</span>
+        <p>
+          Comparar a pergunta com <em>todos</em> os vetores é correto, mas lento quando o corpus cresce. O HNSW constrói
+          uma rede de "atalhos" entre vetores vizinhos e navega por ela, como achar um endereço seguindo placas em vez de
+          visitar todas as ruas. O preço é que o resultado é <strong>aproximado</strong> (quase sempre idêntico ao exato) e
+          que construir o índice custa tempo.
+        </p>
+        <p>
+          Repare em <code>vector_cosine_ops</code>: o índice só ajuda consultas que usam o operador de <strong>cosseno</strong>
+          (<code>&lt;=&gt;</code>). Se você ordenar por outro operador, o índice é ignorado em silêncio.
+        </p>
+      </div>
+      <div class="callout warn">
+        <span class="ct">Armadilha: 384 aparece em três lugares</span>
+        O <code>vector(384)</code> do SQL, a variável <code>VECTOR_DIMENSION</code> e a saída do modelo de embeddings
+        <strong>precisam concordar</strong>. Se um deles mudar, as inserções falham. No passo 4 vamos fazer o código
+        reclamar alto, em vez de deixar o erro aparecer só no banco.
+      </div>
+
+      <h3>Subindo o Postgres</h3>
+      <p>
+        Crie o <code>.env.example</code> (e copie para <code>.env</code>) e o <code>docker-compose.yml</code>. O Compose já
+        inclui o Ollama, que usaremos no passo 7. Por enquanto vamos subir só o banco.
+      </p>
+<figure class="code" data-lang="toml"><figcaption><span class="fname">.env.example</span><span class="lang">Config</span><button type="button" class="copy">Copiar</button></figcaption><pre><code># Banco
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=knowledge
+POSTGRES_PASSWORD=change_me
+POSTGRES_DB=knowledge_assistant
+
+# Embeddings: a dimensão TEM que bater com vector(384) no schema.sql
+EMBEDDING_MODEL=all-MiniLM-L6-v2
+VECTOR_DIMENSION=384
+
+# Chunking e busca
+CHUNK_SIZE=500
+CHUNK_OVERLAP=80
+RETRIEVAL_TOP_K=5
+
+# LLM (Ollama local)
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2
+OLLAMA_TIMEOUT_SECONDS=300
+
+# Go API
+API_PORT=8080
+RAG_SERVICE_URL=http://localhost:8000</code></pre></figure>
+<figure class="code" data-lang="yaml"><figcaption><span class="fname">docker-compose.yml</span><span class="lang">YAML</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>services:
+  db:
+    image: pgvector/pgvector:pg16
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # roda UMA vez, quando o volume está vazio
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list &gt;/dev/null 2&gt;&amp;1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  postgres_data:
+  ollama_data:</code></pre></figure>
+      <p>
+        Repare no volume <code>./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql</code>. A imagem do Postgres executa
+        qualquer arquivo dessa pasta quando o banco é criado, e é assim que nossas tabelas nascem sem nenhum comando manual.
+      </p>
+<figure class="code" data-lang="bash"><figcaption><span class="fname">terminal</span><span class="lang">Terminal</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>cp .env.example .env
+docker compose up -d db</code></pre></figure>
+      <div class="callout check">
+        <span class="ct">Checkpoint</span>
+        <p>Confira se as tabelas e a extensão existem:</p>
+<figure class="code" data-lang="bash"><figcaption><span class="fname">terminal</span><span class="lang">Terminal</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>docker compose exec db psql -U knowledge -d knowledge_assistant -c "\dt"
+docker compose exec db psql -U knowledge -d knowledge_assistant -c "\dx"</code></pre></figure>
+        <p>Você deve ver <code>chunks</code>, <code>documents</code> e <code>embeddings</code> na primeira saída, e a extensão <code>vector</code> na segunda.</p>
+      </div>
+      <div class="callout warn">
+        <span class="ct">Armadilha: o schema "não atualiza"</span>
+        Os scripts de <code>initdb.d</code> rodam <strong>só na primeira vez</strong>, com o volume vazio. Se você editar o
+        <code>schema.sql</code> depois, nada acontece. Para recomeçar do zero (isso apaga os dados):
+        <code>docker compose down -v &amp;&amp; docker compose up -d db</code>.
+      </div>
+    </section>
+
+    <section id="passo2" data-toc="Passo 2 · Projeto Python">
+      <h2><span class="step-tag">Passo 2</span>O projeto Python: configuração e conexão</h2>
+      <p>
+        Antes do pipeline em si, precisamos de duas coisas chatas, mas importantes: ler configuração do ambiente
+        e conversar com o banco de forma eficiente.
+      </p>
+
+      <h3>Instalando</h3>
+      <p>Crie <code>services/rag/pyproject.toml</code> e instale num ambiente virtual:</p>
+<figure class="code" data-lang="toml"><figcaption><span class="fname">services/rag/pyproject.toml</span><span class="lang">Config</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>[project]
+name = "knowledge-rag"
+version = "0.1.0"
+requires-python = "&gt;=3.11"
+dependencies = [
+    "fastapi&gt;=0.115.0",
+    "uvicorn[standard]&gt;=0.32.0",
+    "psycopg[binary,pool]&gt;=3.2.0",
+    "pgvector&gt;=0.3.6",
+    "pydantic-settings&gt;=2.6.0",
+    "sentence-transformers&gt;=3.3.0",
+    "httpx&gt;=0.28.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest&gt;=8.3.0",
+    "mcp&gt;=1.9.0,&lt;2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[build-system]
+requires = ["setuptools&gt;=75.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["rag*"]</code></pre></figure>
+<figure class="code" data-lang="bash"><figcaption><span class="fname">terminal</span><span class="lang">Terminal</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>cd services/rag
+python -m venv .venv
+source .venv/bin/activate        # Windows (PowerShell): .venv\Scripts\Activate.ps1
+pip install -e ".[dev]"</code></pre></figure>
+      <div class="callout tip">
+        <span class="ct">Dica: a instalação é grande</span>
+        O <code>sentence-transformers</code> traz o PyTorch, que passa de 1 GB. É normal demorar. Se você não tem GPU, instalar antes
+        a versão só-CPU (<code>pip install torch --index-url https://download.pytorch.org/whl/cpu</code>) economiza espaço e tempo.
+      </div>
+
+      <h3>Configuração: <code>config.py</code></h3>
+      <p>
+        A regra de ouro é: <strong>nada de endereço, senha ou modelo escrito no código</strong>. Tudo vem de variáveis de ambiente.
+        Usamos o <code>pydantic-settings</code>, que lê o <code>.env</code> e converte os tipos (porta vira <code>int</code>, por exemplo).
+        Variáveis reais do processo vencem o arquivo, e é por isso que o Docker consegue trocar <code>POSTGRES_HOST</code> para <code>db</code> sem tocar no <code>.env</code>.
+      </p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">services/rag/rag/config.py</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>from functools import lru_cache
+from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _find_env_file() -&gt; Path | None:
+    """Sobe a árvore de pastas até achar um .env (raiz do repo no host)."""
+    for folder in Path(__file__).resolve().parents:
+        candidate = folder / ".env"
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+class Settings(BaseSettings):
+    # Cada campo lê a variável de ambiente de mesmo nome (POSTGRES_HOST, ...).
+    # Variáveis reais do processo têm prioridade sobre o .env.
+    model_config = SettingsConfigDict(env_file=_find_env_file(), extra="ignore")
+
+    postgres_host: str = "localhost"
+    postgres_port: int = 5432
+    postgres_user: str = "knowledge"
+    postgres_password: str = "change_me"
+    postgres_db: str = "knowledge_assistant"
+
+    vector_dimension: int = 384
+    embedding_model: str = "all-MiniLM-L6-v2"
+
+    chunk_size: int = 500
+    chunk_overlap: int = 80
+    retrieval_top_k: int = 5
+
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "llama3.2"
+    ollama_timeout_seconds: float = 300.0
+
+    @property
+    def database_url(self) -&gt; str:
+        return (
+            f"postgresql://{self.postgres_user}:{self.postgres_password}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )
+
+
+@lru_cache
+def get_settings() -&gt; Settings:
+    return Settings()</code></pre></figure>
+      <p>Crie também o arquivo vazio <code>services/rag/rag/__init__.py</code>, que faz de <code>rag</code> um pacote.</p>
+
+      <h3>Conexões: <code>db.py</code></h3>
+      <p>
+        Abrir uma conexão com o Postgres a cada requisição é caro. Um <strong>pool</strong> mantém algumas conexões abertas e as empresta.
+        O <code>contextmanager</code> garante que a conexão volte ao pool ao final do bloco <code>with</code>, mesmo se algo falhar.
+        O <code>dict_row</code> faz cada linha chegar como dicionário (<code>row["id"]</code>) em vez de tupla.
+      </p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">services/rag/rag/db.py</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>from collections.abc import Generator
+from contextlib import contextmanager
+
+from psycopg import Connection
+from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
+
+from rag.config import Settings, get_settings
+
+_pool: ConnectionPool | None = None
+
+
+def init_pool(settings: Settings | None = None) -&gt; ConnectionPool:
+    global _pool
+    if _pool is None:
+        cfg = settings or get_settings()
+        _pool = ConnectionPool(
+            conninfo=cfg.database_url,
+            min_size=1,
+            max_size=10,
+            kwargs={"row_factory": dict_row},  # linhas viram dicts
+            open=True,
+        )
+    return _pool
+
+
+def close_pool() -&gt; None:
+    global _pool
+    if _pool is not None:
+        _pool.close()
+        _pool = None
+
+
+@contextmanager
+def connection() -&gt; Generator[Connection, None, None]:
+    """Empresta uma conexão do pool e devolve ao sair do bloco."""
+    with init_pool().connection() as conn:
+        yield conn
+
+
+def check_database() -&gt; None:
+    with connection() as conn:
+        row = conn.execute("SELECT 1 AS ok").fetchone()
+        if row is None or row["ok"] != 1:
+            raise RuntimeError("database health check failed")</code></pre></figure>
+      <div class="callout check">
+        <span class="ct">Checkpoint</span>
+        <p>Com o banco de pé, rode (dentro de <code>services/rag</code>, com a venv ativa):</p>
+<figure class="code" data-lang="bash"><figcaption><span class="fname">terminal</span><span class="lang">Terminal</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>python -c "from rag.db import check_database; check_database(); print('banco ok')"</code></pre></figure>
+        <p>Se aparecer <code>banco ok</code>, a configuração e a conexão estão certas. Se der erro de conexão, confira se o container está <em>healthy</em> (<code>docker compose ps</code>) e se a porta bate com o <code>.env</code>.</p>
+      </div>
+    </section>
+
+    <section id="passo3" data-toc="Passo 3 · Chunking">
+      <h2><span class="step-tag">Passo 3</span>Chunking: quebrando o texto em pedaços</h2>
+      <p>
+        Por que não gerar um único vetor para o documento inteiro? Por dois motivos. Primeiro, um vetor de um texto longo é uma
+        <em>média borrada</em> de vários assuntos: ele não se parece muito com nenhuma pergunta específica. Segundo, o LLM tem um limite
+        de contexto: entregar o documento todo a cada pergunta é caro e, muitas vezes, impossível.
+      </p>
+      <p>
+        A solução é cortar em pedaços (<em>chunks</em>) que tenham mais ou menos um assunto cada. E como o corte pode cair no meio de uma
+        ideia, fazemos os pedaços vizinhos <strong>se sobreporem</strong> um pouco (<em>overlap</em>): o final de um chunk se repete no início do próximo.
+      </p>
+
+      <div class="lab" id="chunk-lab">
+        <div class="lab-head"><strong>Laboratório · Chunking</strong><span>edite o texto e mexa nos controles</span></div>
+        <textarea id="cl-text" rows="6" spellcheck="false"></textarea>
+        <div class="controls">
+          <label>chunk_size<output id="cl-size-v"></output><input type="range" id="cl-size" min="20" max="600" step="10" value="200" /></label>
+          <label>chunk_overlap<output id="cl-ov-v"></output><input type="range" id="cl-ov" min="0" max="300" step="5" value="40" /></label>
+        </div>
+        <div class="lab-stats" id="cl-stats"></div>
+        <div class="chunks" id="cl-out"></div>
+        <p class="legend"><span class="ov">amarelo</span> = trecho repetido do chunk anterior (o overlap). Aumente o overlap até igualar o tamanho para ver o erro que o código protege.</p>
+      </div>
+
+      <p>O algoritmo é uma janela deslizante sobre os caracteres. Crie <code>services/rag/rag/chunking.py</code>:</p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">services/rag/rag/chunking.py</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>def chunk_text(text: str, chunk_size: int, chunk_overlap: int) -&gt; list[str]:
+    """Divide o texto em janelas de caracteres que se sobrepõem."""
+    if chunk_size &lt;= 0:
+        raise ValueError("chunk_size must be positive")
+    if chunk_overlap &lt; 0:
+        raise ValueError("chunk_overlap must be non-negative")
+    if chunk_overlap &gt;= chunk_size:
+        # sem isso o laço nunca avançaria (loop infinito)
+        raise ValueError("chunk_overlap must be smaller than chunk_size")
+
+    normalized = text.strip()
+    if not normalized:
+        return []
+
+    chunks: list[str] = []
+    start = 0
+    length = len(normalized)
+
+    while start &lt; length:
+        end = min(start + chunk_size, length)
+        piece = normalized[start:end].strip()
+        if piece:
+            chunks.append(piece)
+        if end &gt;= length:
+            break
+        start = end - chunk_overlap  # recua para repetir o final do chunk
+
+    return chunks</code></pre></figure>
+      <p>Três detalhes merecem atenção:</p>
+      <ul>
+        <li><strong>A validação do overlap.</strong> Se <code>chunk_overlap &gt;= chunk_size</code>, o <code>start</code> nunca avançaria e o laço seria infinito. Falhar cedo, com uma mensagem clara, é melhor do que travar o servidor.</li>
+        <li><strong><code>start = end - chunk_overlap</code></strong> é o que "recua" a janela para repetir o final do chunk anterior.</li>
+        <li><strong>O corte é por caracteres, não por palavras.</strong> É simples e previsível, mas pode partir uma palavra ao meio (veja a saída abaixo). Sistemas maiores cortam por parágrafo, frase ou tokens. Fica como exercício no final.</li>
+      </ul>
+
+      <div class="callout concept">
+        <span class="ct">Conceito: o dilema do tamanho</span>
+        <p>
+          <strong>Chunks grandes</strong> carregam mais contexto, mas misturam assuntos e deixam o vetor "borrado".
+          <strong>Chunks pequenos</strong> são precisos, mas podem perder o contexto que explica a resposta. Não existe valor certo universal:
+          500 caracteres com 80 de overlap (nosso padrão) é um ponto de partida razoável. O jeito de decidir é medir, com perguntas reais.
+        </p>
+        <p>
+          Um sinal disso no nosso próprio FAQ: o trecho que contém a resposta sobre "reset do banco" também carrega outras três perguntas,
+          e por isso seu score de similaridade fica em torno de 0,33, bem mais baixo do que o de uma frase curta sobre um único assunto (como no checkpoint do passo 4).
+        </p>
+      </div>
+
+      <div class="callout check">
+        <span class="ct">Checkpoint</span>
+        <p>No Python (<code>python</code> dentro de <code>services/rag</code>):</p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">python (REPL)</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>from rag.chunking import chunk_text
+txt = "Alfa bravo charlie delta echo foxtrot golf hotel india juliet kilo lima mike november oscar papa."
+for i, c in enumerate(chunk_text(txt, 40, 10)):
+    print(i, repr(c))</code></pre></figure>
+<figure class="code" data-lang="out"><figcaption><span class="fname">saída esperada</span><span class="lang">Saída</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>0 'Alfa bravo charlie delta echo foxtrot go'
+1 'foxtrot golf hotel india juliet kilo lim'
+2 't kilo lima mike november oscar papa.'</code></pre></figure>
+        <p>Note o overlap de 10 caracteres entre os chunks (<code>foxtrot go</code> / <code>foxtrot golf</code>) e o corte no meio de "golf" e "lima".</p>
+      </div>
+    </section>
+
+    <section id="passo4" data-toc="Passo 4 · Embeddings">
+      <h2><span class="step-tag">Passo 4</span>Embeddings: transformando significado em números</h2>
+      <p>
+        Um <strong>embedding</strong> é a saída de um modelo treinado para que textos com <em>significado parecido</em> gerem listas de números
+        <em>parecidas</em>. Ele não "entende" palavras-chave: "como recomeço do zero com o banco vazio?" e "apague o volume e suba o stack de novo"
+        não compartilham quase nenhuma palavra, mas ficam próximos no espaço dos vetores. É isso que torna a busca semântica, e não só textual.
+      </p>
+      <p>
+        Cada texto vira um vetor de 384 números. Imagine cada vetor como uma <strong>seta</strong> num espaço de 384 dimensões. Duas setas apontando
+        para a mesma direção significam o mesmo assunto. A medida de "mesma direção" é o <strong>cosseno do ângulo</strong> entre elas: 1 quando coincidem,
+        0 quando são perpendiculares (sem relação), -1 quando opostas.
+      </p>
+
+      <div class="lab" id="sim-lab">
+        <div class="lab-head"><strong>Laboratório · Similaridade por cosseno</strong><span>em 2D para caber na tela; com 384 dimensões a ideia é idêntica</span></div>
+        <div class="sim-grid">
+          <svg id="sim-svg" viewBox="0 0 300 300" aria-label="Círculo com os vetores dos documentos e da pergunta"></svg>
+          <div>
+            <div class="controls" style="margin-top:0">
+              <label>direção da pergunta<output id="sim-ang-v"></output><input type="range" id="sim-ang" min="0" max="359" step="1" value="35" /></label>
+            </div>
+            <div class="rank" id="sim-rank"></div>
+          </div>
+        </div>
+        <p class="legend">Gire a pergunta (seta branca). Os chunks cujas setas ficam mais alinhadas com ela sobem no ranking. É exatamente o que o banco faz com os 384 números.</p>
+      </div>
+
+      <h3>Por que normalizar?</h3>
+      <p>
+        Pedimos ao modelo <code>normalize_embeddings=True</code>, que deixa cada vetor com comprimento 1. Com vetores de comprimento 1, o cosseno é
+        simplesmente o <strong>produto escalar</strong> (multiplicar elemento a elemento e somar), uma conta barata e que combina com o índice <code>vector_cosine_ops</code>.
+      </p>
+
+      <p>Crie <code>services/rag/rag/embedder.py</code>:</p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">services/rag/rag/embedder.py</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>from functools import lru_cache
+
+import numpy as np
+from sentence_transformers import SentenceTransformer
+
+from rag.config import Settings, get_settings
+
+
+@lru_cache
+def _load_model(model_name: str) -&gt; SentenceTransformer:
+    # Carregar o modelo leva segundos: fazemos uma vez por processo.
+    return SentenceTransformer(model_name)
+
+
+class Embedder:
+    def __init__(self, settings: Settings | None = None) -&gt; None:
+        self._settings = settings or get_settings()
+        self._model = _load_model(self._settings.embedding_model)
+
+    @property
+    def model_name(self) -&gt; str:
+        return self._settings.embedding_model
+
+    def embed(self, texts: list[str]) -&gt; list[list[float]]:
+        if not texts:
+            return []
+        vectors = self._model.encode(
+            texts,
+            normalize_embeddings=True,  # comprimento 1 =&gt; cosseno = produto escalar
+            show_progress_bar=False,
+        )
+        array = np.asarray(vectors, dtype=np.float32)
+        expected = self._settings.vector_dimension
+        if array.shape[1] != expected:
+            raise ValueError(
+                f"embedding dimension {array.shape[1]} != VECTOR_DIMENSION {expected}"
+            )
+        return array.tolist()
+
+    def embed_one(self, text: str) -&gt; list[float]:
+        return self.embed([text])[0]</code></pre></figure>
+      <ul>
+        <li><strong><code>@lru_cache</code> no carregamento.</strong> Carregar o modelo leva alguns segundos e uns 100 MB de memória. Fazemos isso uma vez por processo e reaproveitamos.</li>
+        <li><strong>A checagem de dimensão.</strong> Se alguém trocar <code>EMBEDDING_MODEL</code> sem ajustar <code>VECTOR_DIMENSION</code>, o erro aparece aqui, com os dois números na mensagem, e não como uma falha enigmática no <code>INSERT</code>.</li>
+        <li><strong>Lote.</strong> <code>embed()</code> recebe uma lista: o modelo processa vários textos de uma vez, muito mais rápido do que um por um.</li>
+      </ul>
+
+      <div class="callout warn">
+        <span class="ct">Trocando de modelo</span>
+        Vetores de modelos diferentes não são comparáveis entre si. Trocar de modelo exige: (1) ajustar <code>VECTOR_DIMENSION</code>;
+        (2) alterar o tipo da coluna em <code>embeddings</code> (ou recriar a tabela); (3) <strong>reembedar todo o corpus</strong>. É por isso que gravamos
+        <code>model_name</code> em cada linha.
+      </div>
+
+      <div class="callout check">
+        <span class="ct">Checkpoint</span>
+        <p>Na primeira execução o modelo é baixado (cerca de 90 MB), então tenha paciência. Depois:</p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">python (REPL)</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>from rag.embedder import Embedder
+import numpy as np
+
+e = Embedder()
+q = "How do I start over with an empty database?"
+docs = [
+    "To wipe the database and start again, remove the volume and bring the stack up.",
+    "The default embedding model produces 384-dimensional vectors.",
+    "My cat sleeps on the sofa all afternoon.",
+]
+a = np.array(e.embed([q] + docs))
+print(a.shape, float(np.linalg.norm(a[0])))
+for d, s in zip(docs, a[1:] @ a[0]):      # produto escalar = cosseno
+    print(round(float(s), 3), d)</code></pre></figure>
+<figure class="code" data-lang="out"><figcaption><span class="fname">saída esperada (números aproximados)</span><span class="lang">Saída</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>(4, 384) 1.0
+0.577 To wipe the database and start again, remove the volume and bring the stack up.
+0.055 The default embedding model produces 384-dimensional vectors.
+0.078 My cat sleeps on the sofa all afternoon.</code></pre></figure>
+        <p>
+          O formato <code>(4, 384)</code> confirma a dimensão, e a norma <code>1.0</code> confirma a normalização. Veja o score: a frase que
+          fala do <em>mesmo assunto</em> (com palavras quase todas diferentes) pontua <strong>10 vezes mais</strong> do que as outras duas.
+          Isso é busca semântica funcionando.
+        </p>
+      </div>
+    </section>
+
+    <section id="passo5" data-toc="Passo 5 · Ingestão">
+      <h2><span class="step-tag">Passo 5</span>Ingestão: guardando chunks e vetores</h2>
+      <p>
+        Agora juntamos as peças: pegar um documento, picotar, calcular os vetores e gravar tudo no banco. Esse código mora num
+        <strong>repositório</strong> (<code>DocumentRepository</code>), a única classe que sabe como o banco é organizado. O resto do sistema
+        pede "ingira isto" ou "busque aquilo" e não escreve SQL.
+      </p>
+      <p>Crie <code>services/rag/rag/repository.py</code>. Vamos ler o <code>ingest_document</code> agora, e o <code>search_similar</code> no próximo passo:</p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">services/rag/rag/repository.py</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>from typing import Protocol
+from uuid import UUID
+
+from pgvector import Vector
+from pgvector.psycopg import register_vector
+
+from rag.chunking import chunk_text
+from rag.db import connection
+
+
+class _EmbedsText(Protocol):
+    model_name: str
+
+    def embed(self, texts: list[str]) -&gt; list[list[float]]: ...
+
+
+class DocumentRepository:
+    def __init__(self, embedder: _EmbedsText) -&gt; None:
+        self._embedder = embedder
+
+    def ingest_document(
+        self,
+        document_id: UUID,
+        text: str,
+        title: str,
+        chunk_size: int,
+        chunk_overlap: int,
+    ) -&gt; int:
+        pieces = chunk_text(text, chunk_size, chunk_overlap)
+        if not pieces:
+            raise ValueError("document text produced no chunks after chunking")
+
+        # Embedding é a parte lenta: calculamos ANTES de abrir a transação,
+        # para não segurar uma conexão do pool enquanto o modelo trabalha.
+        vectors = self._embedder.embed(pieces)
+
+        with connection() as conn:
+            register_vector(conn)  # ensina o psycopg a falar o tipo `vector`
+            with conn.transaction():  # tudo ou nada
+                conn.execute(
+                    """
+                    INSERT INTO documents (id, title, content_type)
+                    VALUES (%s, %s, 'text/plain')
+                    ON CONFLICT (id) DO UPDATE
+                    SET title = EXCLUDED.title, updated_at = now()
+                    """,
+                    (document_id, title),
+                )
+                # Re-ingerir o mesmo id substitui os chunks antigos.
+                conn.execute("DELETE FROM chunks WHERE document_id = %s", (document_id,))
+
+                for index, (content, vector) in enumerate(zip(pieces, vectors, strict=True)):
+                    row = conn.execute(
+                        """
+                        INSERT INTO chunks (document_id, chunk_index, content)
+                        VALUES (%s, %s, %s)
+                        RETURNING id
+                        """,
+                        (document_id, index, content),
+                    ).fetchone()
+                    conn.execute(
+                        """
+                        INSERT INTO embeddings (chunk_id, embedding, model_name)
+                        VALUES (%s, %s, %s)
+                        """,
+                        (row["id"], Vector(vector), self._embedder.model_name),
+                    )
+
+        return len(pieces)
+
+    def search_similar(self, query_vector: list[float], top_k: int) -&gt; list[dict]:
+        with connection() as conn:
+            register_vector(conn)
+            rows = conn.execute(
+                """
+                SELECT c.id AS chunk_id,
+                       c.document_id,
+                       c.chunk_index,
+                       c.content,
+                       1 - (e.embedding &lt;=&gt; %s) AS score
+                FROM embeddings e
+                JOIN chunks c ON c.id = e.chunk_id
+                ORDER BY e.embedding &lt;=&gt; %s
+                LIMIT %s
+                """,
+                (Vector(query_vector), Vector(query_vector), top_k),
+            ).fetchall()
+
+        return [{**row, "score": float(row["score"])} for row in rows]</code></pre></figure>
+      <h3>As quatro decisões escondidas nesse código</h3>
+      <ol>
+        <li>
+          <strong>Embedar antes de abrir a transação.</strong> Calcular vetores é a parte lenta (CPU). Se fizéssemos isso <em>dentro</em> do
+          <code>with connection()</code>, uma conexão do pool ficaria presa durante todo o cálculo. Com poucas conexões e várias ingestões, o pool secaria.
+        </li>
+        <li>
+          <strong>Transação: tudo ou nada.</strong> Se o 3º chunk falhar, o <code>conn.transaction()</code> desfaz o documento e os dois primeiros chunks.
+          Você nunca fica com um documento "meio ingerido" que a busca encontra pela metade.
+        </li>
+        <li>
+          <strong>Idempotência por <code>document_id</code>.</strong> O <code>ON CONFLICT ... DO UPDATE</code> atualiza o título se o documento já existe, e o
+          <code>DELETE FROM chunks</code> remove os chunks antigos (os vetores vão junto, por causa do <code>CASCADE</code>). Reingerir o mesmo id <em>substitui</em> o conteúdo em vez de duplicá-lo.
+        </li>
+        <li>
+          <strong><code>register_vector</code> e <code>Vector(...)</code>.</strong> O driver não conhece o tipo <code>vector</code> do pgvector. Essas duas linhas ensinam o
+          psycopg a converter listas Python de e para o banco.
+        </li>
+      </ol>
+      <div class="callout tip">
+        <span class="ct">Dica: e em escala?</span>
+        Fazemos um <code>INSERT</code> por chunk porque é fácil de ler. Para milhares de chunks, use <code>executemany</code> ou <code>COPY</code>.
+        A estrutura (embedar fora, gravar numa transação) continua igual.
+      </div>
+      <div class="callout check">
+        <span class="ct">Checkpoint</span>
+        <p>Vamos ingerir o FAQ direto pelo repositório, sem nenhuma API ainda. Dentro de <code>services/rag</code>:</p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">python (REPL)</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>from pathlib import Path
+from uuid import uuid4
+from rag.config import get_settings
+from rag.embedder import Embedder
+from rag.repository import DocumentRepository
+
+s = get_settings()
+repo = DocumentRepository(Embedder(s))
+texto = Path("../../data/sample/faq.txt").read_text(encoding="utf-8")
+n = repo.ingest_document(uuid4(), texto, "FAQ", s.chunk_size, s.chunk_overlap)
+print(n, "chunks gravados")</code></pre></figure>
+<figure class="code" data-lang="bash"><figcaption><span class="fname">terminal</span><span class="lang">Terminal</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>docker compose exec db psql -U knowledge -d knowledge_assistant \
+  -c "SELECT d.title, count(c.id) AS chunks, count(e.id) AS vetores
+      FROM documents d JOIN chunks c ON c.document_id = d.id
+      JOIN embeddings e ON e.chunk_id = c.id GROUP BY d.title"</code></pre></figure>
+        <p>Você deve ver <code>3 chunks gravados</code> e, no banco, a mesma quantidade de chunks e de vetores. Rodar o script duas vezes com o <em>mesmo</em> <code>uuid</code> não duplica nada (com <code>uuid4()</code> novo a cada execução, sim: cada um é um documento diferente).</p>
+      </div>
+    </section>
+
+    <section id="passo6" data-toc="Passo 6 · Busca">
+      <h2><span class="step-tag">Passo 6</span>Busca por similaridade: achando os chunks certos</h2>
+      <p>
+        O método <code>search_similar</code>, que já está no <code>repository.py</code>, é o coração da recuperação. Olhe de novo a consulta:
+      </p>
+<figure class="code" data-lang="sql"><figcaption><span class="fname">a consulta de busca (dentro de repository.py)</span><span class="lang">SQL</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>SELECT c.id AS chunk_id, c.document_id, c.chunk_index, c.content,
+       1 - (e.embedding &lt;=&gt; %s) AS score
+FROM embeddings e
+JOIN chunks c ON c.id = e.chunk_id
+ORDER BY e.embedding &lt;=&gt; %s
+LIMIT %s</code></pre></figure>
+      <ul>
+        <li><strong><code>&lt;=&gt;</code></strong> é o operador de <em>distância de cosseno</em> do pgvector: 0 significa idêntico, 2 significa oposto.</li>
+        <li><strong><code>1 - distância</code></strong> converte distância em <em>similaridade</em>, que é mais intuitivo: quanto maior o <code>score</code>, mais parecido.</li>
+        <li><strong><code>ORDER BY ... LIMIT k</code></strong> é exatamente o formato que o índice HNSW acelera: "me dê os k vizinhos mais próximos".</li>
+        <li><strong>Dois parâmetros iguais</strong> (o vetor aparece duas vezes) porque ele é usado uma vez no <code>SELECT</code> e outra no <code>ORDER BY</code>.</li>
+      </ul>
+      <div class="callout warn">
+        <span class="ct">Armadilha: score não é probabilidade</span>
+        Um score de 0,35 pode ser um <em>ótimo</em> resultado, enquanto 0,6 pode ser fraco. O valor depende do modelo e do tamanho dos chunks.
+        Use o score para <strong>ordenar</strong> e, no máximo, para comparar resultados da <em>mesma</em> pergunta, não como "porcentagem de acerto".
+      </div>
+      <div class="callout concept">
+        <span class="ct">Conceito: busca aproximada (ANN)</span>
+        Com poucas linhas, o Postgres pode ignorar o índice e comparar tudo (o resultado é o mesmo e é rápido). O HNSW passa a valer a pena com dezenas de milhares
+        de chunks. A troca é conhecida: um pouco de precisão em troca de muita velocidade.
+      </div>
+      <div class="callout check">
+        <span class="ct">Checkpoint</span>
+        <p>Pergunte ao repositório, ainda sem LLM:</p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">python (REPL)</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>q = Embedder(s).embed_one("Which embedding model is used by default?")
+for hit in repo.search_similar(q, 3):
+    print(round(hit["score"], 3), hit["chunk_index"], hit["content"][:70].replace("\n", " "))</code></pre></figure>
+        <p>
+          Você deve receber até três linhas, com scores em ordem decrescente. Leia o trecho do primeiro resultado:
+          ele deve conter a frase sobre o <code>all-MiniLM-L6-v2</code>. Se o chunk certo aparece no topo, a recuperação funciona.
+        </p>
+      </div>
+    </section>
+
+    <section id="passo7" data-toc="Passo 7 · Geração">
+      <h2><span class="step-tag">Passo 7</span>Geração: o LLM responde só com o que recuperamos</h2>
+      <p>
+        Já temos os chunks relevantes. Falta transformá-los numa resposta em linguagem natural. Aqui entra o LLM, e entra com <strong>rédea curta</strong>:
+        o prompt entrega o contexto e proíbe o uso de conhecimento externo. Esse truque se chama <strong>grounding</strong> (ancorar a resposta nos documentos).
+      </p>
+
+      <h3>A hierarquia de erros: <code>errors.py</code></h3>
+      <p>
+        Antes de qualquer coisa, defina como seu sistema falha. Em vez de lançar <code>Exception("deu ruim")</code>, cada falha esperada tem um
+        <strong>código estável</strong> (para máquinas decidirem o que fazer) e uma <strong>mensagem</strong> (para humanos entenderem). No passo 8 esses códigos viram status HTTP.
+      </p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">services/rag/rag/errors.py</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>class RAGError(Exception):
+    """Falha de domínio: um código estável para máquinas + mensagem para humanos."""
+
+    def __init__(self, code: str, message: str) -&gt; None:
+        self.code = code
+        super().__init__(message)
+
+
+class NoRelevantChunksError(RAGError):
+    def __init__(self) -&gt; None:
+        super().__init__(
+            "no_relevant_chunks",
+            "No chunks found for this question. Ingest a document first.",
+        )
+
+
+class LLMError(RAGError):
+    """Falha ao falar com o LLM. code: llm_unavailable | llm_timeout | llm_error."""</code></pre></figure>
+
+      <h3>O prompt: <code>prompt.py</code></h3>
+      <p>
+        A API de chat de um LLM trabalha com <em>mensagens</em> de papéis diferentes. A mensagem <code>system</code> define o comportamento ("responda só com o contexto").
+        A mensagem <code>user</code> traz o contexto numerado e a pergunta. Numerar os trechos (<code>[1]</code>, <code>[2]</code>…) ajuda o modelo a referenciá-los.
+      </p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">services/rag/rag/prompt.py</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>SYSTEM_PROMPT = (
+    "You are a knowledge assistant. "
+    "Answer only using the provided context. Do not use outside knowledge. "
+    "If the context does not contain the answer, say you do not know."
+)
+
+
+def build_chat_messages(question: str, chunks: list[dict]) -&gt; list[dict[str, str]]:
+    """Monta as mensagens: regra (system) + contexto numerado + pergunta (user)."""
+    blocks = [
+        f"[{i}] document_id={chunk['document_id']} "
+        f"chunk_index={chunk['chunk_index']}\n{chunk['content']}"
+        for i, chunk in enumerate(chunks, start=1)
+    ]
+    context = "\n\n".join(blocks)
+    user = (
+        "Use only the context below to answer the question. "
+        "If the answer is not in the context, say you do not know.\n\n"
+        f"Context:\n{context}\n\n"
+        f"Question: {question}"
+    )
+    return [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": user},
+    ]</code></pre></figure>
+      <div class="callout concept">
+        <span class="ct">Conceito: por que a regra aparece duas vezes?</span>
+        Repetimos "use apenas o contexto" tanto no <code>system</code> quanto no <code>user</code>. Modelos menores seguem melhor instruções que estão perto da pergunta.
+        Redundância barata aumenta a obediência.
+      </div>
+
+      <h3>O cliente do LLM: <code>llm.py</code></h3>
+      <p>
+        O Ollama expõe <code>POST /api/chat</code>. Mandamos <code>"stream": false</code> para receber a resposta completa de uma vez (mais simples; streaming é um exercício no final).
+        O mais importante aqui é o <strong>tratamento de erros</strong>: um LLM pode estar desligado, lento ou devolver lixo, e cada caso vira um <code>LLMError</code> com código próprio.
+      </p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">services/rag/rag/llm.py</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>import httpx
+
+from rag.errors import LLMError
+
+
+class OllamaClient:
+    """Chama POST /api/chat do Ollama, sem streaming."""
+
+    def __init__(
+        self,
+        base_url: str,
+        model: str,
+        timeout: float,
+        *,
+        client: httpx.Client | None = None,
+    ) -&gt; None:
+        self._url = base_url.rstrip("/") + "/api/chat"
+        self._model = model
+        self._timeout = timeout
+        self._client = client or httpx.Client(timeout=timeout)
+
+    def close(self) -&gt; None:
+        self._client.close()
+
+    def chat(self, messages: list[dict[str, str]]) -&gt; str:
+        payload = {"model": self._model, "messages": messages, "stream": False}
+        try:
+            response = self._client.post(self._url, json=payload)
+        except httpx.TimeoutException as exc:  # subclasse de HTTPError: vem primeiro
+            raise LLMError(
+                "llm_timeout", f"Ollama did not answer within {self._timeout:g}s."
+            ) from exc
+        except httpx.HTTPError as exc:
+            raise LLMError("llm_unavailable", f"Ollama is unreachable: {exc}") from exc
+
+        if response.status_code &gt;= 400:
+            raise LLMError(
+                "llm_error",
+                f"Ollama returned HTTP {response.status_code}: {response.text[:200]}",
+            )
+
+        content = (response.json().get("message") or {}).get("content", "").strip()
+        if not content:
+            raise LLMError("llm_error", "Ollama returned an empty answer.")
+        return content</code></pre></figure>
+      <div class="callout warn">
+        <span class="ct">Armadilha: a ordem dos <code>except</code></span>
+        <code>httpx.TimeoutException</code> é uma <em>subclasse</em> de <code>httpx.HTTPError</code>. Se você capturar <code>HTTPError</code> primeiro, o timeout cai ali e
+        a mensagem "inalcançável" esconde o problema real. Sempre coloque o <code>except</code> mais específico antes do mais genérico.
+      </div>
+
+      <h3>A orquestração: <code>answer.py</code></h3>
+      <p>Esta é a função que liga busca e geração. Ela é pequena de propósito:</p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">services/rag/rag/answer.py</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>from typing import Protocol
+
+from rag.errors import NoRelevantChunksError
+from rag.prompt import build_chat_messages
+
+
+# Protocolos = "contratos mínimos". Qualquer objeto com esses métodos serve,
+# inclusive um fake de teste. É a costura que torna o núcleo testável.
+class EmbedsQuery(Protocol):
+    def embed_one(self, text: str) -&gt; list[float]: ...
+
+
+class SearchesChunks(Protocol):
+    def search_similar(self, query_vector: list[float], top_k: int) -&gt; list[dict]: ...
+
+
+class GeneratesAnswer(Protocol):
+    def chat(self, messages: list[dict[str, str]]) -&gt; str: ...
+
+
+def generate_grounded_answer(
+    *,
+    question: str,
+    top_k: int,
+    embedder: EmbedsQuery,
+    repository: SearchesChunks,
+    llm: GeneratesAnswer,
+) -&gt; tuple[str, list[dict]]:
+    """Recupera os top-k chunks e pede ao LLM uma resposta baseada só neles."""
+    query_vector = embedder.embed_one(question)
+    hits = repository.search_similar(query_vector, top_k)
+    if not hits:
+        # Sem contexto não chamamos o LLM: ele inventaria uma resposta.
+        raise NoRelevantChunksError()
+
+    messages = build_chat_messages(question, hits)
+    return llm.chat(messages), hits</code></pre></figure>
+      <ul>
+        <li>
+          <strong><code>Protocol</code>: contratos mínimos.</strong> A função não importa <code>Embedder</code>, <code>DocumentRepository</code> nem <code>OllamaClient</code>. Ela só exige
+          "algo que tenha <code>embed_one</code>", "algo que tenha <code>search_similar</code>", "algo que tenha <code>chat</code>". Em produção entram os objetos reais; nos testes, fakes de três linhas. Veremos isso no passo 11.
+        </li>
+        <li>
+          <strong>Sem contexto, sem LLM.</strong> Se a busca voltar vazia (corpus sem documentos), lançamos <code>NoRelevantChunksError</code> e <strong>nem chamamos o modelo</strong>.
+          Um LLM sem contexto é uma máquina de inventar respostas.
+        </li>
+      </ul>
+      <div class="callout warn">
+        <span class="ct">Honestidade técnica: o limite dessa proteção</span>
+        Essa checagem só pega o corpus <em>vazio</em>. Num corpus com documentos, o <code>top-k</code> sempre devolve <em>alguma coisa</em>, mesmo que irrelevante.
+        Quem segura a barra nesse caso é a instrução "diga que não sabe" no prompt. Uma melhoria natural é descartar chunks abaixo de um score mínimo
+        (veja os exercícios no final).
+      </div>
+
+      <h3>Subindo o modelo</h3>
+<figure class="code" data-lang="bash"><figcaption><span class="fname">terminal (na raiz do projeto)</span><span class="lang">Terminal</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>docker compose up -d                          # sobe db e ollama
+docker compose exec ollama ollama pull llama3.2   # baixa ~2 GB, uma vez só</code></pre></figure>
+      <div class="callout check">
+        <span class="ct">Checkpoint</span>
+        <p>Confirme que o Ollama responde antes de culpar o seu código:</p>
+<figure class="code" data-lang="bash"><figcaption><span class="fname">terminal</span><span class="lang">Terminal</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>curl -s http://localhost:11434/api/chat -d '{
+  "model": "llama3.2",
+  "messages": [{"role": "user", "content": "Say hi in five words."}],
+  "stream": false
+}'</code></pre></figure>
+        <p>Deve voltar um JSON com <code>message.content</code>. A primeira chamada pode levar de dezenas de segundos a alguns minutos: o modelo está sendo carregado na memória (as seguintes são bem mais rápidas).</p>
+      </div>
+    </section>
+
+    <section id="passo8" data-toc="Passo 8 · O serviço">
+      <h2><span class="step-tag">Passo 8</span>O serviço RAG: transformando em HTTP</h2>
+      <p>
+        Temos todos os blocos. Falta embrulhá-los num serviço HTTP com <strong>FastAPI</strong>. Primeiro, os formatos de entrada e saída
+        (o <code>pydantic</code> valida automaticamente: um <code>question</code> vazio ou um <code>top_k</code> fora de 1 a 50 já é rejeitado antes de chegar ao seu código):
+      </p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">services/rag/rag/schemas.py</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+
+class IngestRequest(BaseModel):
+    document_id: UUID
+    text: str = Field(min_length=1)
+    title: str | None = None
+
+
+class IngestResponse(BaseModel):
+    document_id: UUID
+    chunks_created: int
+
+
+class QueryRequest(BaseModel):
+    question: str = Field(min_length=1)
+    top_k: int | None = Field(default=None, ge=1, le=50)
+
+
+class SourceChunk(BaseModel):
+    chunk_id: UUID
+    document_id: UUID
+    chunk_index: int
+    content: str
+    score: float
+
+
+class QueryResponse(BaseModel):
+    answer: str
+    sources: list[SourceChunk]</code></pre></figure>
+      <p>E então o <code>app.py</code>, onde tudo se encontra:</p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">services/rag/rag/app.py</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, HTTPException
+
+from rag.answer import generate_grounded_answer
+from rag.config import get_settings
+from rag.db import check_database, close_pool, init_pool
+from rag.embedder import Embedder
+from rag.errors import RAGError
+from rag.llm import OllamaClient
+from rag.repository import DocumentRepository
+from rag.schemas import (
+    IngestRequest,
+    IngestResponse,
+    QueryRequest,
+    QueryResponse,
+    SourceChunk,
+)
+
+# Código de erro de domínio -&gt; status HTTP
+_ERROR_STATUS = {
+    "no_relevant_chunks": 404,
+    "llm_unavailable": 503,
+    "llm_timeout": 504,
+    "llm_error": 502,
+}
+
+
+def init_runtime() -&gt; None:
+    """Liga embedder, repositório e LLM. Idempotente: pode ser chamado 2x."""
+    if getattr(app.state, "repository", None) is not None:
+        return
+    settings = get_settings()
+    init_pool(settings)
+    app.state.settings = settings
+    app.state.embedder = Embedder(settings)
+    app.state.repository = DocumentRepository(app.state.embedder)
+    app.state.llm = OllamaClient(
+        settings.ollama_base_url, settings.ollama_model, settings.ollama_timeout_seconds
+    )
+
+
+def shutdown_runtime() -&gt; None:
+    llm = getattr(app.state, "llm", None)
+    if llm is not None:
+        llm.close()
+    close_pool()
+    app.state.repository = None
+
+
+def run_query(question: str, top_k: int | None = None) -&gt; QueryResponse:
+    """O ÚNICO caminho de consulta: POST /query e a ferramenta MCP chamam isto."""
+    answer, hits = generate_grounded_answer(
+        question=question,
+        top_k=top_k or app.state.settings.retrieval_top_k,
+        embedder=app.state.embedder,
+        repository=app.state.repository,
+        llm=app.state.llm,
+    )
+    return QueryResponse(answer=answer, sources=[SourceChunk(**hit) for hit in hits])
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    init_runtime()
+    try:
+        yield
+    finally:
+        shutdown_runtime()
+
+
+app = FastAPI(title="Knowledge Assistant RAG", lifespan=lifespan)
+
+
+@app.get("/health")
+def health() -&gt; dict:
+    try:
+        check_database()
+    except Exception as exc:  # qualquer falha de banco =&gt; 503
+        raise HTTPException(
+            status_code=503,
+            detail={"error": "database_unavailable", "message": str(exc)},
+        ) from exc
+    return {"status": "ok", "database": "ok"}
+
+
+@app.post("/ingest", response_model=IngestResponse)
+def ingest(body: IngestRequest) -&gt; IngestResponse:
+    settings = app.state.settings
+    try:
+        created = app.state.repository.ingest_document(
+            document_id=body.document_id,
+            text=body.text,
+            title=body.title or str(body.document_id),
+            chunk_size=settings.chunk_size,
+            chunk_overlap=settings.chunk_overlap,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "invalid_request", "message": str(exc)},
+        ) from exc
+    return IngestResponse(document_id=body.document_id, chunks_created=created)
+
+
+@app.post("/query", response_model=QueryResponse)
+def query(body: QueryRequest) -&gt; QueryResponse:
+    try:
+        return run_query(body.question, body.top_k)
+    except RAGError as exc:
+        raise HTTPException(
+            status_code=_ERROR_STATUS.get(exc.code, 500),
+            detail={"error": exc.code, "message": str(exc)},
+        ) from exc</code></pre></figure>
+      <h3>O que olhar com atenção</h3>
+      <ul>
+        <li>
+          <strong><code>run_query()</code> é o único caminho de consulta.</strong> O endpoint <code>POST /query</code> chama essa função, e no passo 10 a ferramenta MCP chamará a <em>mesma</em>.
+          Nada de duas implementações que divergem com o tempo.
+        </li>
+        <li>
+          <strong><code>init_runtime()</code> é idempotente</strong> (se já inicializou, retorna). Por quê? Porque dois mundos diferentes precisam dela: o FastAPI (via <code>lifespan</code>) e o processo MCP (que não passa pelo FastAPI).
+        </li>
+        <li>
+          <strong>O mapa de erros.</strong> Os códigos de domínio viram status HTTP coerentes:
+        </li>
+      </ul>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Situação</th><th>Código</th><th>HTTP</th></tr></thead>
+        <tbody>
+          <tr><td>Corpus vazio / nada encontrado</td><td><code>no_relevant_chunks</code></td><td>404</td></tr>
+          <tr><td>Ollama desligado ou inalcançável</td><td><code>llm_unavailable</code></td><td>503</td></tr>
+          <tr><td>Ollama demorou demais</td><td><code>llm_timeout</code></td><td>504</td></tr>
+          <tr><td>Ollama respondeu erro ou vazio</td><td><code>llm_error</code></td><td>502</td></tr>
+        </tbody>
+      </table></div>
+      <p>
+        A escolha dos números não é aleatória: <strong>5xx</strong> significa "o problema está do lado do servidor ou de uma dependência", e quem chama pode tentar de novo mais tarde.
+        <strong>404</strong> aqui é "não há o que responder", o que é diferente de falha.
+      </p>
+
+      <h3>Rodando</h3>
+<figure class="code" data-lang="bash"><figcaption><span class="fname">terminal (dentro de services/rag, venv ativa)</span><span class="lang">Terminal</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>uvicorn rag.app:app --host 0.0.0.0 --port 8000</code></pre></figure>
+      <div class="callout warn">
+        <span class="ct">Armadilha: <code>--host 0.0.0.0</code></span>
+        Por padrão o uvicorn escuta só em <code>127.0.0.1</code>. Isso basta no seu computador, mas dentro de um container (passo 12) a API Go não alcançaria o serviço e você veria
+        <em>connection refused</em>. Habituar-se a escrever <code>0.0.0.0</code> evita essa surpresa.
+      </div>
+      <div class="callout check">
+        <span class="ct">Checkpoint</span>
+        <p>Em outro terminal, na raiz do projeto. Primeiro ingira o FAQ, depois pergunte:</p>
+<figure class="code" data-lang="bash"><figcaption><span class="fname">terminal</span><span class="lang">Terminal</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>curl -s http://localhost:8000/health
+
+DOC_ID=$(python -c "import uuid; print(uuid.uuid4())")
+curl -s -X POST http://localhost:8000/ingest \
+  -H "Content-Type: application/json" \
+  -d "{\"document_id\":\"$DOC_ID\",\"title\":\"FAQ\",\"text\":$(python -c "import json; print(json.dumps(open('data/sample/faq.txt', encoding='utf-8').read()))")}"
+
+curl -s -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{"question":"What is the vector dimension setting?","top_k":2}'</code></pre></figure>
+<figure class="code" data-lang="out"><figcaption><span class="fname">saídas esperadas (resumidas)</span><span class="lang">Saída</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>{"status":"ok","database":"ok"}
+{"document_id":"…","chunks_created":3}
+{"answer":"The vector dimension setting is that it must match the embedding model output and the vector(n) column.","sources":[{"chunk_id":"…","document_id":"…","chunk_index":1,"content":"…","score":0.38}, …]}</code></pre></figure>
+        <p>Se a resposta veio e <code>sources</code> traz trechos do FAQ, o <strong>coração do sistema está funcionando</strong>. O resto do tutorial é embalagem, fronteiras e qualidade.</p>
+      </div>
+    </section>
+
+    <section id="passo9" data-toc="Passo 9 · API em Go">
+      <h2><span class="step-tag">Passo 9</span>A API pública em Go</h2>
+      <p>
+        Já temos um serviço HTTP funcionando, então por que colocar outra camada na frente? Por <strong>fronteira</strong>. O serviço Python é um detalhe interno,
+        com formato de erro do FastAPI, validações do pydantic e uma estrutura que pode mudar. A API Go é o <strong>contrato público</strong>: valida a entrada,
+        devolve sempre o mesmo formato de erro (<code>{"error", "message"}</code>) e isola os clientes das mudanças internas.
+      </p>
+      <p>
+        Vamos construir a versão mínima, usando apenas a biblioteca padrão do Go (mais um pacote para gerar UUIDs). Crie a pasta <code>services/api/</code> com estes arquivos:
+      </p>
+<figure class="code" data-lang="text"><figcaption><span class="fname">services/api/go.mod</span><span class="lang">Texto</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>module example.com/knowledge-api
+
+go 1.22</code></pre></figure>
+<figure class="code" data-lang="go"><figcaption><span class="fname">services/api/main.go</span><span class="lang">Go</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+// ---- erro público: sempre {"error","message"} ----
+
+type apiError struct {
+	Status  int    `json:"-"`
+	Code    string `json:"error"`
+	Message string `json:"message"`
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+// ---- cliente do serviço Python ----
+
+type ragClient struct {
+	base string
+	http *http.Client
+}
+
+func (c *ragClient) post(ctx context.Context, path string, in, out any) *apiError {
+	payload, _ := json.Marshal(in)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+path, bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return &amp;apiError{http.StatusBadGateway, "rag_unavailable", err.Error()}
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode &gt;= 400 {
+		// O FastAPI devolve {"detail": {"error": "...", "message": "..."}}
+		var upstream struct {
+			Detail apiError `json:"detail"`
+		}
+		_ = json.Unmarshal(body, &amp;upstream)
+		if upstream.Detail.Code == "" {
+			upstream.Detail = apiError{Code: "rag_error", Message: strings.TrimSpace(string(body))}
+		}
+		upstream.Detail.Status = resp.StatusCode
+		return &amp;upstream.Detail
+	}
+	if err := json.Unmarshal(body, out); err != nil {
+		return &amp;apiError{http.StatusBadGateway, "rag_bad_response", err.Error()}
+	}
+	return nil
+}
+
+// ---- handlers ----
+
+type server struct{ rag *ragClient }
+
+func (s *server) ingest(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Title string `json:"title"`
+		Text  string `json:"text"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&amp;in); err != nil ||
+		strings.TrimSpace(in.Title) == "" || strings.TrimSpace(in.Text) == "" {
+		writeJSON(w, 400, apiError{Code: "invalid_request", Message: "title and text are required"})
+		return
+	}
+
+	var out map[string]any
+	err := s.rag.post(r.Context(), "/ingest", map[string]any{
+		"document_id": uuid.NewString(),
+		"title":       in.Title,
+		"text":        in.Text,
+	}, &amp;out)
+	if err != nil {
+		writeJSON(w, err.Status, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, out)
+}
+
+func (s *server) query(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Question string `json:"question"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&amp;in); err != nil || strings.TrimSpace(in.Question) == "" {
+		writeJSON(w, 400, apiError{Code: "invalid_request", Message: "question is required"})
+		return
+	}
+
+	var out map[string]any
+	if err := s.rag.post(r.Context(), "/query", map[string]any{"question": in.Question}, &amp;out); err != nil {
+		writeJSON(w, err.Status, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+func main() {
+	rag := &amp;ragClient{
+		base: getenv("RAG_SERVICE_URL", "http://localhost:8000"),
+		http: &amp;http.Client{Timeout: 180 * time.Second},
+	}
+	s := &amp;server{rag: rag}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, 200, map[string]string{"status": "ok"})
+	})
+	mux.HandleFunc("POST /ingest", s.ingest)
+	mux.HandleFunc("POST /query", s.query)
+
+	addr := ":" + getenv("API_PORT", "8080")
+	fmt.Println("listening on", addr)
+	log.Fatal(http.ListenAndServe(addr, mux))
+}
+
+func getenv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}</code></pre></figure>
+      <h3>Lendo o código com calma</h3>
+      <ul>
+        <li>
+          <strong>O envelope de erro (<code>apiError</code>).</strong> Qualquer erro, de qualquer origem, sai como <code>{"error": "...", "message": "..."}</code>. O campo <code>Status</code> usa <code>json:"-"</code>:
+          serve para escolher o status HTTP, mas não aparece no corpo.
+        </li>
+        <li>
+          <strong>O cliente do RAG (<code>ragClient.post</code>).</strong> Um único método genérico cuida de enviar JSON, ler a resposta e traduzir falhas. Se o Python não responde, vira <code>502 rag_unavailable</code>.
+          Se o Python responde erro, repassamos o código dele (o FastAPI embrulha em <code>{"detail": {...}}</code>, e nós desembrulhamos).
+        </li>
+        <li>
+          <strong><code>r.Context()</code> e o timeout.</strong> Passamos o contexto da requisição adiante. Se o cliente desistir, a chamada ao Python é cancelada. O <code>http.Client</code> tem um timeout de 180 s porque uma consulta inclui a geração do LLM.
+        </li>
+        <li>
+          <strong>Rotas com método no padrão (Go 1.22+).</strong> <code>mux.HandleFunc("POST /ingest", ...)</code> já restringe o verbo HTTP, sem <code>if r.Method != ...</code>. É por isso que o <code>go.mod</code> declara <code>go 1.22</code>.
+        </li>
+        <li>
+          <strong>O UUID nasce no Go.</strong> A API gera o <code>document_id</code> e o passa ao Python. Quem chama não escolhe ids.
+        </li>
+      </ul>
+
+      <h3>Rodando</h3>
+<figure class="code" data-lang="bash"><figcaption><span class="fname">terminal (dentro de services/api)</span><span class="lang">Terminal</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>go mod tidy          # baixa a dependência do uuid e cria o go.sum
+go run .</code></pre></figure>
+      <p>Sem Go instalado? Pule para o passo 12: o Dockerfile faz esse trabalho.</p>
+      <div class="callout check">
+        <span class="ct">Checkpoint</span>
+        <p>Com o serviço Python ainda rodando na porta 8000:</p>
+<figure class="code" data-lang="bash"><figcaption><span class="fname">terminal</span><span class="lang">Terminal</span><button type="button" class="copy">Copiar</button></figcaption><pre><code># 1) validação na borda: o Python nem é chamado
+curl -s -X POST localhost:8080/ingest -H "Content-Type: application/json" -d '{"title":"","text":"x"}'
+
+# 2) consulta ponta a ponta: cliente -&gt; Go -&gt; Python -&gt; Postgres/Ollama
+curl -s -X POST localhost:8080/query -H "Content-Type: application/json" \
+  -d '{"question":"What embedding model is used by default?"}'</code></pre></figure>
+<figure class="code" data-lang="out"><figcaption><span class="fname">a primeira resposta</span><span class="lang">Saída</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>{"error":"invalid_request","message":"title and text are required"}</code></pre></figure>
+        <p>
+          Para ver o tratamento de falhas, pare o serviço Python (<kbd>Ctrl</kbd>+<kbd>C</kbd>) e repita o <code>POST /query</code>:
+          você deve receber <code>502</code> com <code>"error":"rag_unavailable"</code>, em vez de um erro confuso ou de um travamento.
+        </p>
+      </div>
+
+      <h3>O que a versão do repositório faz a mais</h3>
+      <p>
+        A versão do repositório guarda os metadados do documento <em>no Go</em> antes de chamar o Python (inclusive o <code>source_uri</code>, que nossa versão mínima perde)
+        e tem uma regra interessante de <strong>rollback</strong>:
+      </p>
+<figure class="code" data-lang="go"><figcaption><span class="fname">services/api/internal/httpapi/ingest.go (trecho)</span><span class="lang">Go</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>// Metadata is committed first so source_uri survives the Python upsert,
+// which updates title and updated_at only. An HTTP error from RAG did not
+// commit chunks, so the row is removed. A timeout is left in place because
+// that transaction may still commit and recreate the document.
+resp, err := h.rag.Ingest(ctx, ragclient.IngestRequest{DocumentID: id, Text: body.Text, Title: title})
+if err != nil {
+    if ragclient.ShouldRollback(err) {
+        _ = h.repo.Delete(r.Context(), id)
+    }
+    return mapRAGError(err)
+}</code></pre></figure>
+      <p>
+        O detalhe fino: se o Python <em>respondeu</em> com erro, sabemos que nada foi gravado, então apagamos a linha de metadados. Mas se deu <strong>timeout</strong>, não sabemos:
+        a transação do Python pode ainda estar prestes a confirmar. Apagar agora criaria uma inconsistência pior, então deixamos como está. Esse tipo de raciocínio sobre falhas parciais
+        é o que separa um protótipo de um serviço.
+      </p>
+      <p>
+        Outro padrão do repositório: os handlers dependem de uma <em>interface</em> (<code>ragclient.Client</code>), não do cliente HTTP concreto. Nos testes, entra um stub no lugar. É o mesmo truque dos <code>Protocol</code> do Python.
+      </p>
+    </section>
+
+    <section id="passo10" data-toc="Passo 10 · Ferramenta MCP">
+      <h2><span class="step-tag">Passo 10</span>MCP: oferecendo a consulta como ferramenta para agentes</h2>
+      <p>
+        O <strong>MCP</strong> (<em>Model Context Protocol</em>) é um padrão aberto para que aplicações de IA, como o Claude Desktop, descubram e chamem <strong>ferramentas</strong> externas.
+        Ao expor nossa consulta como a ferramenta <code>query_knowledge_base</code>, qualquer agente compatível ganha acesso à sua base de conhecimento sem que você escreva integração específica para ele.
+      </p>
+      <p>
+        No transporte <strong>stdio</strong>, o cliente <em>inicia nosso programa</em> como um subprocesso e conversa com ele por <code>stdin</code>/<code>stdout</code>, trocando mensagens JSON-RPC. Isso tem uma consequência
+        enorme, que está no centro do código abaixo.
+      </p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">services/rag/rag/mcp.py</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>"""Servidor MCP via stdio: uma ferramenta, o mesmo caminho do POST /query."""
+
+import logging
+import os
+import sys
+from typing import Annotated
+
+from mcp.server.fastmcp import FastMCP
+from pydantic import BaseModel, Field
+
+# No stdio o stdout é o canal JSON-RPC. Qualquer print/log nele quebra o protocolo.
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
+mcp = FastMCP("knowledge-assistant")
+
+
+class KnowledgeBaseSource(BaseModel):
+    document_id: str
+    chunk: str
+    score: float
+
+
+class KnowledgeBaseResult(BaseModel):
+    answer: str
+    sources: list[KnowledgeBaseSource]
+
+
+def query_knowledge_base(
+    question: Annotated[str, Field(min_length=1, description="Pergunta em linguagem natural")],
+) -&gt; KnowledgeBaseResult:
+    """Responde uma pergunta usando os documentos ingeridos (RAG)."""
+    cleaned = question.strip()
+    if not cleaned:
+        raise ValueError("question must not be empty")
+
+    # Import tardio: listar as ferramentas não carrega torch nem o MiniLM.
+    from rag.app import init_runtime, run_query
+
+    init_runtime()
+    result = run_query(cleaned)
+    return KnowledgeBaseResult(
+        answer=result.answer,
+        sources=[
+            KnowledgeBaseSource(
+                document_id=str(s.document_id),
+                chunk=s.content,  # no MCP o campo se chama `chunk`
+                score=s.score,
+            )
+            for s in result.sources
+        ],
+    )
+
+
+mcp.tool(
+    name="query_knowledge_base",
+    description=(
+        "Consulta a base de conhecimento. Retorna uma resposta fundamentada "
+        "e os trechos usados (document_id, chunk, score)."
+    ),
+)(query_knowledge_base)
+
+
+def main() -&gt; None:
+    mcp.run(transport="stdio")
+
+
+if __name__ == "__main__":
+    main()</code></pre></figure>
+      <div class="callout warn">
+        <span class="ct">Armadilha: o stdout é sagrado</span>
+        Como o <code>stdout</code> é o canal do protocolo, <strong>qualquer <code>print()</code> ou log ali corrompe a comunicação</strong>. Por isso configuramos o <code>logging</code> para o <code>stderr</code>
+        e silenciamos as barras de progresso do Hugging Face. Quando um servidor MCP "não conecta" sem motivo aparente, esse é o primeiro suspeito.
+      </div>
+      <ul>
+        <li>
+          <strong>Import tardio.</strong> <code>from rag.app import ...</code> fica <em>dentro</em> da função. Quando o cliente apenas lista as ferramentas, não precisamos carregar o PyTorch e o modelo (vários segundos).
+          Eles são carregados na primeira chamada de verdade, o que mantém o handshake inicial rápido.
+        </li>
+        <li>
+          <strong>A mesma <code>run_query()</code>.</strong> Nenhuma lógica de busca foi copiada. O MCP é só um <em>transporte</em> mais um esquema de ferramenta.
+        </li>
+        <li>
+          <strong>Adaptação do formato.</strong> O contrato da ferramenta pede o campo <code>chunk</code>, enquanto o HTTP usa <code>content</code>. A tradução acontece nessa camada fina.
+        </li>
+      </ul>
+
+      <h3>Testando</h3>
+<figure class="code" data-lang="bash"><figcaption><span class="fname">terminal (dentro de services/rag, venv ativa)</span><span class="lang">Terminal</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>npx @modelcontextprotocol/inspector python -m rag.mcp</code></pre></figure>
+      <p>O Inspector abre uma página onde você vê a ferramenta, preenche <code>question</code> e executa. É a forma mais rápida de depurar sem o Claude Desktop no meio.</p>
+
+      <h3>Conectando ao Claude Desktop</h3>
+      <p>
+        Edite o arquivo de configuração (no Windows: <code>%APPDATA%\Claude\claude_desktop_config.json</code>; no macOS: <code>~/Library/Application Support/Claude/claude_desktop_config.json</code>)
+        e reinicie o Claude Desktop. Use o caminho <strong>absoluto</strong> do Python da sua venv:
+      </p>
+<figure class="code" data-lang="json"><figcaption><span class="fname">claude_desktop_config.json</span><span class="lang">JSON</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>{
+  "mcpServers": {
+    "knowledge-assistant": {
+      "command": "C:\\caminho\\para\\knowledge-assistant\\services\\rag\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "rag.mcp"],
+      "env": {
+        "POSTGRES_HOST": "localhost",
+        "POSTGRES_PORT": "5432",
+        "OLLAMA_BASE_URL": "http://localhost:11434"
+      }
+    }
+  }
+}</code></pre></figure>
+      <div class="callout tip">
+        <span class="ct">Dica</span>
+        No macOS/Linux o <code>command</code> aponta para <code>.../services/rag/.venv/bin/python</code>. Como o <code>config.py</code> procura o <code>.env</code> subindo as pastas,
+        as variáveis em <code>env</code> são opcionais quando o <code>.env</code> da raiz está preenchido. Elas só deixam a configuração do Claude autocontida.
+      </div>
+    </section>
+
+    <section id="passo11" data-toc="Passo 11 · Testes">
+      <h2><span class="step-tag">Passo 11</span>Testes: mockar a fronteira certa</h2>
+      <p>
+        Testar um sistema de RAG parece difícil: tem modelo de ML, banco e LLM. A saída é a mesma de qualquer sistema com dependências: <strong>testar cada peça isolando as outras pelas suas fronteiras</strong>.
+        Foi para isso que usamos <code>Protocol</code> no <code>answer.py</code>: o núcleo da lógica aceita qualquer objeto com os métodos certos, inclusive fakes triviais.
+      </p>
+
+      <h3>Teste 1: o algoritmo de chunking</h3>
+      <p>É lógica pura, sem dependência nenhuma, o tipo de teste mais barato e mais valioso.</p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">services/rag/tests/test_chunking.py</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>import pytest
+
+from rag.chunking import chunk_text
+
+
+def test_neighbours_share_the_overlap():
+    chunks = chunk_text("abcdefghij" * 5, chunk_size=20, chunk_overlap=5)
+    assert len(chunks) &gt; 1
+    assert chunks[0][-5:] == chunks[1][:5]
+
+
+def test_blank_text_gives_no_chunks():
+    assert chunk_text("   \n  ", chunk_size=10, chunk_overlap=2) == []
+
+
+def test_overlap_must_be_smaller_than_chunk_size():
+    with pytest.raises(ValueError):
+        chunk_text("qualquer texto", chunk_size=10, chunk_overlap=10)</code></pre></figure>
+
+      <h3>Teste 2: a orquestração, com fakes</h3>
+      <p>
+        Sem banco, sem modelo, sem Ollama. Os três colaboradores são classes de poucas linhas. Repare nas duas coisas que verificamos: o <em>contexto realmente chega ao prompt</em>
+        e, com corpus vazio, <em>o LLM nunca é chamado</em>:
+      </p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">services/rag/tests/test_answer.py</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>from uuid import uuid4
+
+import pytest
+
+from rag.answer import generate_grounded_answer
+from rag.errors import NoRelevantChunksError
+from rag.prompt import SYSTEM_PROMPT
+
+
+class FakeEmbedder:
+    def embed_one(self, text: str) -&gt; list[float]:
+        return [1.0, 0.0]
+
+
+class FakeStore:
+    def __init__(self, hits: list[dict]) -&gt; None:
+        self.hits = hits
+
+    def search_similar(self, query_vector: list[float], top_k: int) -&gt; list[dict]:
+        return self.hits[:top_k]
+
+
+class SpyLLM:
+    def __init__(self) -&gt; None:
+        self.messages: list[dict[str, str]] | None = None
+
+    def chat(self, messages: list[dict[str, str]]) -&gt; str:
+        self.messages = messages
+        return "384 dimensões."
+
+
+def _hit(content: str) -&gt; dict:
+    return {
+        "chunk_id": uuid4(),
+        "document_id": uuid4(),
+        "chunk_index": 0,
+        "content": content,
+        "score": 0.9,
+    }
+
+
+def test_prompt_contains_retrieved_context_and_question():
+    llm = SpyLLM()
+    answer, hits = generate_grounded_answer(
+        question="Qual a dimensão do vetor?",
+        top_k=3,
+        embedder=FakeEmbedder(),
+        repository=FakeStore([_hit("O modelo gera vetores de 384 dimensões.")]),
+        llm=llm,
+    )
+
+    assert answer == "384 dimensões."
+    assert len(hits) == 1
+    assert llm.messages[0]["content"] == SYSTEM_PROMPT
+    assert "384 dimensões" in llm.messages[1]["content"]
+    assert "Qual a dimensão do vetor?" in llm.messages[1]["content"]
+
+
+def test_empty_corpus_never_calls_the_llm():
+    llm = SpyLLM()
+    with pytest.raises(NoRelevantChunksError):
+        generate_grounded_answer(
+            question="Qualquer coisa",
+            top_k=3,
+            embedder=FakeEmbedder(),
+            repository=FakeStore([]),
+            llm=llm,
+        )
+    assert llm.messages is None  # o LLM nem foi consultado</code></pre></figure>
+
+      <h3>Teste 3: o cliente do LLM, sem rede</h3>
+      <p>
+        O <code>httpx</code> permite injetar um <code>MockTransport</code>: uma função que faz o papel do servidor. Assim simulamos timeout e queda de conexão e conferimos o <em>código de erro</em> que sai:
+      </p>
+<figure class="code" data-lang="python"><figcaption><span class="fname">services/rag/tests/test_llm.py</span><span class="lang">Python</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>import httpx
+import pytest
+
+from rag.errors import LLMError
+from rag.llm import OllamaClient
+
+
+def make_client(handler) -&gt; OllamaClient:
+    fake_http = httpx.Client(transport=httpx.MockTransport(handler))
+    return OllamaClient("http://ollama", "llama3.2", 5, client=fake_http)
+
+
+def test_returns_the_assistant_message():
+    def handler(request: httpx.Request) -&gt; httpx.Response:
+        assert request.url.path == "/api/chat"
+        return httpx.Response(200, json={"message": {"content": " Olá! "}})
+
+    assert make_client(handler).chat([{"role": "user", "content": "oi"}]) == "Olá!"
+
+
+def test_timeout_becomes_llm_timeout():
+    def handler(request: httpx.Request) -&gt; httpx.Response:
+        raise httpx.ReadTimeout("demorou", request=request)
+
+    with pytest.raises(LLMError) as exc:
+        make_client(handler).chat([])
+    assert exc.value.code == "llm_timeout"
+
+
+def test_connection_failure_becomes_llm_unavailable():
+    def handler(request: httpx.Request) -&gt; httpx.Response:
+        raise httpx.ConnectError("recusou", request=request)
+
+    with pytest.raises(LLMError) as exc:
+        make_client(handler).chat([])
+    assert exc.value.code == "llm_unavailable"</code></pre></figure>
+      <div class="callout check">
+        <span class="ct">Checkpoint</span>
+<figure class="code" data-lang="bash"><figcaption><span class="fname">terminal (dentro de services/rag)</span><span class="lang">Terminal</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>pytest -q</code></pre></figure>
+<figure class="code" data-lang="out"><figcaption><span class="fname">saída esperada</span><span class="lang">Saída</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>........                                                                 [100%]
+8 passed in 0.7s</code></pre></figure>
+        <p>Todos os testes rodam em menos de um segundo, sem precisar de nada ligado.</p>
+      </div>
+
+      <h3>Os dois testes que faltam (e onde estão no repositório)</h3>
+      <ul>
+        <li>
+          <strong>Integração com banco real.</strong> Mocks não provam que seu SQL funciona. O repositório tem <code>test_integration.py</code>, que ingere e consulta num Postgres de verdade, usando
+          um embedder determinístico (vetores fixos, sem ML) e um LLM falso. Assim, o que é testado é o <em>SQL e a transação</em>, de forma estável.
+        </li>
+        <li>
+          <strong>Handlers Go com RAG falso.</strong> <code>httpapi/handlers_test.go</code> injeta um stub da interface <code>ragclient.Client</code> e verifica status HTTP e formato de erro para cada cenário.
+        </li>
+      </ul>
+      <div class="callout concept">
+        <span class="ct">Conceito: a pirâmide, na prática</span>
+        Muitos testes unitários rápidos (lógica pura e fakes), poucos de integração (onde o risco está na tecnologia: SQL, HTTP). Evite um teste que "só confere se o LLM respondeu algo": ele é lento, flutuante e não prova nada sobre o <em>seu</em> código.
+      </div>
+    </section>
+
+    <section id="passo12" data-toc="Passo 12 · Tudo no Compose">
+      <h2><span class="step-tag">Passo 12</span>Juntando tudo com Docker Compose</h2>
+      <p>
+        Até aqui você rodou serviços à mão em vários terminais. O objetivo final é <strong>um comando</strong> que sobe tudo. Precisamos de dois Dockerfiles e de ampliar o Compose.
+      </p>
+
+      <h3>Os Dockerfiles</h3>
+      <p>
+        O do serviço Python instala o PyTorch só-CPU (muito menor que a versão CUDA) e define um <em>healthcheck</em> que consulta o <code>/health</code>:
+        o <code>start_period</code> generoso dá tempo para o modelo carregar.
+      </p>
+<figure class="code" data-lang="dockerfile"><figcaption><span class="fname">services/rag/Dockerfile</span><span class="lang">Dockerfile</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>FROM python:3.11-slim-bookworm
+
+WORKDIR /app
+ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+
+RUN apt-get update \
+    &amp;&amp; apt-get install -y --no-install-recommends curl \
+    &amp;&amp; rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml ./
+COPY rag ./rag
+
+# PyTorch só-CPU: a imagem fica bem menor que a versão com CUDA.
+RUN pip install torch --index-url https://download.pytorch.org/whl/cpu \
+    &amp;&amp; pip install -e .
+
+EXPOSE 8000
+HEALTHCHECK --interval=10s --timeout=5s --retries=12 --start-period=120s \
+    CMD curl -fsS http://127.0.0.1:8000/health || exit 1
+
+CMD ["uvicorn", "rag.app:app", "--host", "0.0.0.0", "--port", "8000"]</code></pre></figure>
+      <p>O da API Go usa <strong>build em dois estágios</strong>: compila numa imagem grande com o toolchain e copia só o binário para uma imagem mínima. Isso explica por que você não precisa ter Go instalado.</p>
+<figure class="code" data-lang="dockerfile"><figcaption><span class="fname">services/api/Dockerfile</span><span class="lang">Dockerfile</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>FROM golang:1.23-bookworm AS build
+WORKDIR /src
+COPY . .
+RUN go mod tidy &amp;&amp; CGO_ENABLED=0 go build -o /out/api .
+
+FROM alpine:3.20
+COPY --from=build /out/api /api
+EXPOSE 8080
+ENTRYPOINT ["/api"]</code></pre></figure>
+
+      <h3>O Compose final</h3>
+      <p>Substitua seu <code>docker-compose.yml</code> por esta versão, que acrescenta <code>rag</code> e <code>api</code> aos serviços <code>db</code> e <code>ollama</code>:</p>
+<figure class="code" data-lang="yaml"><figcaption><span class="fname">docker-compose.yml</span><span class="lang">YAML</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>services:
+  db:
+    image: pgvector/pgvector:pg16
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list &gt;/dev/null 2&gt;&amp;1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  rag:
+    build: ./services/rag
+    env_file: .env
+    environment:
+      # dentro da rede do Compose, o host é o NOME do serviço
+      POSTGRES_HOST: db
+      OLLAMA_BASE_URL: http://ollama:11434
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+
+  api:
+    build: ./services/api
+    env_file: .env
+    environment:
+      API_PORT: "8080"
+      RAG_SERVICE_URL: http://rag:8000
+    ports:
+      - "${API_PORT:-8080}:8080"
+    depends_on:
+      rag:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  ollama_data:</code></pre></figure>
+      <h3>O que muda quando o código vai para dentro do Docker</h3>
+      <ul>
+        <li>
+          <strong>Hostnames são nomes de serviço.</strong> Dentro da rede do Compose, o banco é <code>db</code>, o Ollama é <code>ollama</code> e o RAG é <code>rag</code>, e não <code>localhost</code>.
+          Por isso o Compose sobrescreve <code>POSTGRES_HOST</code>, <code>OLLAMA_BASE_URL</code> e <code>RAG_SERVICE_URL</code> via <code>environment</code>, que tem prioridade sobre o <code>env_file</code>.
+          É o mesmo código, com configuração diferente, que é exatamente o objetivo do <code>config.py</code> do passo 2.
+        </li>
+        <li>
+          <strong><code>depends_on</code> com <code>condition: service_healthy</code>.</strong> Não basta o container "ter iniciado": o RAG só sobe quando o banco e o Ollama estão <em>saudáveis</em>, e a API só depois do RAG.
+          Sem isso, você teria falhas de conexão aleatórias na inicialização.
+        </li>
+        <li>
+          <strong>Volumes nomeados</strong> (<code>postgres_data</code>, <code>ollama_data</code>) preservam dados e o modelo entre reinícios, e o <code>down -v</code> é a forma de zerar tudo.
+        </li>
+      </ul>
+
+      <h3>Rodando o sistema completo</h3>
+      <p>Pare os processos manuais (uvicorn e <code>go run</code>) para liberar as portas e então:</p>
+<figure class="code" data-lang="bash"><figcaption><span class="fname">terminal (na raiz do projeto)</span><span class="lang">Terminal</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>docker compose up -d --build                         # primeira vez: vários minutos
+docker compose exec ollama ollama pull llama3.2      # se ainda não baixou neste volume
+docker compose ps                                    # tudo deve estar healthy</code></pre></figure>
+      <p>Ingira o FAQ pela API pública (agora é o Go que gera o UUID) e faça a pergunta final:</p>
+<figure class="code" data-lang="bash"><figcaption><span class="fname">terminal</span><span class="lang">Terminal</span><button type="button" class="copy">Copiar</button></figcaption><pre><code>curl -s -X POST http://localhost:8080/ingest \
+  -H "Content-Type: application/json" \
+  -d "{\"title\":\"FAQ\",\"text\":$(python -c "import json; print(json.dumps(open('data/sample/faq.txt', encoding='utf-8').read()))")}"
+
+curl -s -X POST http://localhost:8080/query \
+  -H "Content-Type: application/json" \
+  -d '{"question":"How do I reset the database during development?"}'</code></pre></figure>
+      <div class="callout check">
+        <span class="ct">Checkpoint final</span>
+        A resposta menciona <code>docker compose down -v</code> e <code>sources</code> traz o trecho do FAQ que a sustenta. Você acabou de percorrer o caminho completo:
+        cliente → Go → Python → Postgres/pgvector → Ollama → resposta com fontes.
+      </div>
+    </section>
+
+    <section id="problemas" data-toc="Quando algo dá errado">
+      <h2>Quando algo dá errado</h2>
+      <p>Estes são os tropeços mais prováveis, na ordem em que costumam aparecer. Vários deles foram encontrados de verdade ao construir e testar este tutorial.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Sintoma</th><th>Causa provável</th><th>O que fazer</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>ValueError: embedding dimension X != VECTOR_DIMENSION 384</code></td>
+            <td>O modelo de embeddings e a configuração (ou a coluna <code>vector(384)</code>) não concordam.</td>
+            <td>Alinhe os três: modelo, <code>VECTOR_DIMENSION</code> e o tipo da coluna. Se trocou de modelo, reembede o corpus.</td>
+          </tr>
+          <tr>
+            <td>Tabelas não existem, ou mudei o <code>schema.sql</code> e nada mudou</td>
+            <td>Os scripts de <code>initdb.d</code> só rodam com o volume vazio.</td>
+            <td><code>docker compose down -v &amp;&amp; docker compose up -d</code> (apaga os dados).</td>
+          </tr>
+          <tr>
+            <td>A primeira pergunta demora muito</td>
+            <td>O Ollama carrega o modelo na memória e o PyTorch/MiniLM carrega na primeira chamada. Em CPU isso pode passar de um minuto.</td>
+            <td>Normal. Aumente <code>OLLAMA_TIMEOUT_SECONDS</code> se estourar o tempo. As próximas chamadas são mais rápidas.</td>
+          </tr>
+          <tr>
+            <td>O mesmo trecho aparece várias vezes em <code>sources</code></td>
+            <td>Você ingeriu o mesmo arquivo mais de uma vez pela API: cada <code>POST /ingest</code> cria um documento novo, com id novo.</td>
+            <td>Apague os duplicados (ou recomece com <code>down -v</code>). Tornar a ingestão idempotente por conteúdo é um bom exercício.</td>
+          </tr>
+          <tr>
+            <td>Go devolve <code>502 rag_unavailable</code> / <em>connection refused</em></td>
+            <td>O Python não está acessível: serviço parado, host errado (<code>localhost</code> dentro de um container) ou uvicorn escutando só em <code>127.0.0.1</code>.</td>
+            <td>Use <code>--host 0.0.0.0</code>, e o nome do serviço (<code>rag</code>) como host dentro do Compose.</td>
+          </tr>
+          <tr>
+            <td><code>503 llm_unavailable</code></td>
+            <td>Ollama desligado ou <code>OLLAMA_BASE_URL</code> errada.</td>
+            <td>Teste o <code>curl</code> do checkpoint do passo 7 direto no Ollama.</td>
+          </tr>
+          <tr>
+            <td><code>404 no_relevant_chunks</code></td>
+            <td>O corpus está vazio.</td>
+            <td>Ingira um documento antes de perguntar.</td>
+          </tr>
+          <tr>
+            <td>O cliente MCP não conecta ou mostra erro de JSON</td>
+            <td>Algo escreveu no <code>stdout</code> (um <code>print</code>, uma barra de progresso, um log).</td>
+            <td>Mande logs para o <code>stderr</code> e teste com o Inspector.</td>
+          </tr>
+          <tr>
+            <td>Respostas ruins com documentos em português</td>
+            <td><code>all-MiniLM-L6-v2</code> é um modelo majoritariamente em inglês.</td>
+            <td>Use um modelo multilíngue (também com 384 dimensões) e reembede.</td>
+          </tr>
+          <tr>
+            <td>Chamando o Python direto, o erro de validação vem num formato diferente</td>
+            <td>Erros de validação do FastAPI (<code>422</code>) usam o formato <code>{"detail": [...]}</code>.</td>
+            <td>É um dos motivos de a API Go existir: ela valida antes e padroniza o formato.</td>
+          </tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="fim" data-toc="O que você aprendeu">
+      <h2>O que você aprendeu (e para onde ir agora)</h2>
+      <p>
+        Vale olhar para trás. Você não só montou um sistema: aplicou um conjunto de ideias que aparecem em quase todo projeto sério com LLMs.
+        A tabela mostra onde cada conceito mora no código, para você poder voltar e reler:
+      </p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Conceito</th><th>Ideia em uma frase</th><th>Onde está</th></tr></thead>
+        <tbody>
+          <tr><td>RAG</td><td>Recuperar primeiro, gerar depois, com o contexto na mão.</td><td><code>answer.py</code></td></tr>
+          <tr><td>Chunking + overlap</td><td>Pedaços pequenos com um assunto, com sobreposição para não perder ideias no corte.</td><td><code>chunking.py</code></td></tr>
+          <tr><td>Embedding</td><td>Significado vira vetor; textos parecidos, vetores parecidos.</td><td><code>embedder.py</code></td></tr>
+          <tr><td>Similaridade por cosseno</td><td>Ângulo entre vetores normalizados; ordena os resultados.</td><td><code>search_similar</code></td></tr>
+          <tr><td>Índice ANN (HNSW)</td><td>Vizinhos aproximados: um pouco de precisão por muita velocidade.</td><td><code>schema.sql</code></td></tr>
+          <tr><td>Grounding</td><td>O LLM só pode usar o contexto, e deve dizer "não sei".</td><td><code>prompt.py</code></td></tr>
+          <tr><td>Transação e idempotência</td><td>Gravar tudo ou nada; reingerir o mesmo id substitui.</td><td><code>ingest_document</code></td></tr>
+          <tr><td>Erros com código estável</td><td>Máquinas decidem pelo código; humanos leem a mensagem.</td><td><code>errors.py</code>, API Go</td></tr>
+          <tr><td>Fronteira e contrato público</td><td>O Go protege os clientes dos detalhes internos do Python.</td><td><code>main.go</code></td></tr>
+          <tr><td>Único caminho de consulta</td><td>HTTP e MCP chamam a mesma função.</td><td><code>run_query()</code></td></tr>
+          <tr><td>Testes nas fronteiras</td><td>Fakes para as dependências; integração só onde o risco é real.</td><td><code>tests/</code></td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Exercícios para ir além</h3>
+      <p>Ordenados do mais simples ao mais ambicioso. Cada um ensina um conceito novo em cima do que você já construiu.</p>
+      <ol>
+        <li>
+          <strong>Score mínimo.</strong> Em <code>generate_grounded_answer</code>, descarte hits com <code>score</code> abaixo de um limiar configurável. Quando sobrar nada, lance <code>NoRelevantChunksError</code>.
+          Teste com uma pergunta sobre outro assunto ("receita de bolo") e veja o sistema recusar em vez de arriscar.
+        </li>
+        <li>
+          <strong>Chunking por frases.</strong> Reescreva <code>chunk_text</code> para cortar em fronteiras de parágrafo ou frase, respeitando o <code>chunk_size</code>. Compare os scores no laboratório do passo 6.
+        </li>
+        <li>
+          <strong>Ingestão idempotente.</strong> Calcule um hash do conteúdo e recuse (ou substitua) o documento que já existe, resolvendo o problema das fontes duplicadas.
+        </li>
+        <li>
+          <strong>Filtros por metadado.</strong> Adicione um <code>WHERE d.title = ...</code> (ou uma tag) na busca. Aprenda como combinar filtro relacional com busca vetorial.
+        </li>
+        <li>
+          <strong>Busca híbrida.</strong> Combine a similaridade vetorial com busca textual do Postgres (<code>tsvector</code>) e some os rankings. Palavras-chave exatas (códigos, siglas) são onde embeddings falham mais.
+        </li>
+        <li>
+          <strong>Streaming.</strong> Mude <code>"stream": false</code> para <code>true</code> e devolva a resposta aos poucos (Server-Sent Events). É a diferença entre esperar 30 s olhando uma tela vazia e ver a resposta nascendo.
+        </li>
+        <li>
+          <strong>Um conjunto de avaliação.</strong> Escreva 20 perguntas com a resposta esperada e meça, para cada configuração (tamanho de chunk, <code>top_k</code>, modelo), em quantas o chunk certo aparece no top-k. É assim que se <em>decide</em> em vez de chutar.
+        </li>
+        <li>
+          <strong>PDF e outros formatos.</strong> Extraia o texto de PDFs antes do chunking. Prepare-se para descobrir que a qualidade da extração limita a qualidade de tudo depois.
+        </li>
+      </ol>
+
+      <div class="callout concept">
+        <span class="ct">A lição mais importante</span>
+        Em RAG, a <strong>qualidade da recuperação</strong> define o teto da qualidade da resposta. Se o chunk certo não chega ao prompt, nenhum LLM, por maior que seja, vai acertar.
+        Por isso quase todo o seu esforço de melhoria (chunking, modelo de embeddings, busca híbrida, avaliação) deve ir para a etapa de <em>recuperar</em>, e não para trocar o LLM.
+      </div>
+
+      <h3>Para continuar</h3>
+      <ul>
+        <li><a href="deep-dive.html">Deep-dive</a>: a versão completa do código (tracing, logs, rollback do Go), explicada decisão por decisão.</li>
+        <li><a href="overview.html">Visão geral</a>: marcos do projeto, diagramas e fluxos animados.</li>
+        <li><a href="https://github.com/wellingtonn96/challenge-take-home-ia/blob/challenge/wellington/docs/api.md">Referência da API</a>: todos os endpoints públicos, com exemplos.</li>
+      </ul>
+    </section>
+
+    <footer class="site">
+      Tutorial do projeto <code>challenge-take-home-ia</code>: Knowledge Assistant (RAG com Python, Go, pgvector e MCP).
+    </footer>
+  </main>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- sumário (sidebar + mobile) e scroll-spy ---------- */
+  var sections = Array.prototype.slice.call(document.querySelectorAll("main section[data-toc]"));
+  var toc = document.getElementById("toc");
+  var tocM = document.getElementById("toc-m");
+  var links = [];
+  sections.forEach(function (sec) {
+    [toc, tocM].forEach(function (list, i) {
+      var li = document.createElement("li");
+      var a = document.createElement("a");
+      a.href = "#" + sec.id;
+      a.textContent = sec.getAttribute("data-toc");
+      li.appendChild(a);
+      list.appendChild(li);
+      if (i === 0) links.push({ id: sec.id, el: a });
+    });
+  });
+  var spy = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting) {
+        links.forEach(function (l) { l.el.classList.toggle("active", l.id === en.target.id); });
+      }
+    });
+  }, { rootMargin: "-15% 0px -70% 0px" });
+  sections.forEach(function (s) { spy.observe(s); });
+
+  /* ---------- barra de progresso de leitura ---------- */
+  var bar = document.getElementById("progress");
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  /* ---------- destaque de sintaxe (leve, sem dependências) ---------- */
+  var KW = {
+    python: "def|class|return|import|from|if|else|elif|for|in|while|with|as|try|except|raise|None|True|False|and|or|not|is|lambda|yield|pass|break|global|self|async|await",
+    go: "package|import|func|return|if|else|for|range|var|const|type|struct|interface|map|go|defer|nil|true|false|switch|case|default|chan|select|any|string|int|error|bool",
+    sql: "CREATE|EXTENSION|IF|NOT|EXISTS|TABLE|INDEX|ON|USING|PRIMARY|KEY|DEFAULT|REFERENCES|DELETE|CASCADE|UNIQUE|CHECK|SELECT|FROM|JOIN|ORDER|BY|LIMIT|INSERT|INTO|VALUES|SET|DO|UPDATE|CONFLICT|AS|NULL|WHERE|DESC|RETURNING|GROUP|UUID|TEXT|INTEGER|TIMESTAMPTZ|vector|hnsw",
+    bash: "cd|python|pip|docker|compose|curl|cp|export|source|go|uvicorn|pytest|npx|up|down|exec|ps",
+    yaml: "true|false|null",
+    json: "true|false|null",
+    toml: "true|false"
+  };
+  var COMMENT = { python: "#", bash: "#", yaml: "#", toml: "#", dockerfile: "#", go: "//", sql: "--" };
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function highlight(lang, src) {
+    if (!KW[lang] && !COMMENT[lang]) return esc(src);
+    var parts = [];
+    if (COMMENT[lang]) parts.push("(" + COMMENT[lang].replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&") + ".*)");
+    else parts.push("(?!x)x");
+    parts.push("(\"\"\"[\\s\\S]*?\"\"\"|\"(?:\\\\.|[^\"\\\\\\n])*\"|'(?:\\\\.|[^'\\\\\\n])*'|`[^`]*`)");
+    parts.push("\\b(" + (KW[lang] || "(?!x)x") + ")\\b");
+    parts.push("\\b(\\d+(?:\\.\\d+)?)\\b");
+    var re = new RegExp(parts.join("|"), "g");
+    var out = "", last = 0, m;
+    while ((m = re.exec(src)) !== null) {
+      out += esc(src.slice(last, m.index));
+      var cls = m[1] ? "tk-c" : m[2] ? "tk-s" : m[3] ? "tk-k" : "tk-n";
+      out += '<span class="' + cls + '">' + esc(m[0]) + "</span>";
+      last = m.index + m[0].length;
+      if (m[0].length === 0) re.lastIndex++;
+    }
+    return out + esc(src.slice(last));
+  }
+  document.querySelectorAll("figure.code").forEach(function (fig) {
+    var code = fig.querySelector("code");
+    var lang = fig.getAttribute("data-lang");
+    var raw = code.textContent;
+    if (lang !== "out") code.innerHTML = highlight(lang, raw);
+    fig.querySelector("button.copy").addEventListener("click", function (ev) {
+      var btn = ev.currentTarget;
+      var done = function () { btn.textContent = "Copiado ✓"; setTimeout(function () { btn.textContent = "Copiar"; }, 1500); };
+      if (navigator.clipboard) navigator.clipboard.writeText(raw).then(done);
+      else { var t = document.createElement("textarea"); t.value = raw; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); done(); }
+    });
+  });
+
+  /* ---------- laboratório 1: chunking (mesmo algoritmo do chunking.py) ---------- */
+  var clText = document.getElementById("cl-text");
+  var clSize = document.getElementById("cl-size");
+  var clOv = document.getElementById("cl-ov");
+  clText.value =
+    "What is the Knowledge Assistant?\n" +
+    "The Knowledge Assistant lets teams query internal documentation using natural language. Answers are grounded in ingested documents via retrieval-augmented generation (RAG).\n\n" +
+    "How does ingestion work?\n" +
+    "Upload or send plain text documents through the ingest API. The system chunks the text, computes embeddings, and stores vectors in PostgreSQL with the pgvector extension.";
+  function chunkLab() {
+    var size = +clSize.value, ov = +clOv.value;
+    document.getElementById("cl-size-v").textContent = size;
+    document.getElementById("cl-ov-v").textContent = ov;
+    var stats = document.getElementById("cl-stats");
+    var out = document.getElementById("cl-out");
+    out.innerHTML = "";
+    if (ov >= size) {
+      stats.innerHTML = '<span class="err">ValueError: chunk_overlap must be smaller than chunk_size</span>';
+      return;
+    }
+    var text = clText.value.trim();
+    var chunks = [], start = 0, prevEnd = 0, n = text.length;
+    while (start < n) {
+      var end = Math.min(start + size, n);
+      var raw = text.slice(start, end);
+      var lead = raw.length - raw.replace(/^\s+/, "").length;
+      var piece = raw.trim();
+      if (piece) {
+        var ovChars = chunks.length ? Math.max(0, Math.min(piece.length, prevEnd - (start + lead))) : 0;
+        chunks.push({ piece: piece, ov: ovChars });
+      }
+      prevEnd = end;
+      if (end >= n) break;
+      start = end - ov;
+    }
+    var total = chunks.reduce(function (a, c) { return a + c.piece.length; }, 0);
+    stats.innerHTML = "<b>" + chunks.length + "</b> chunks · texto com <b>" + n + "</b> caracteres · " +
+      "<b>" + Math.max(0, total - n) + "</b> caracteres repetidos por causa do overlap";
+    chunks.forEach(function (c, i) {
+      var row = document.createElement("div");
+      row.className = "chunk";
+      var ix = document.createElement("span");
+      ix.className = "ix"; ix.textContent = "#" + i;
+      var body = document.createElement("span");
+      if (c.ov > 0) {
+        var o = document.createElement("span");
+        o.className = "ov"; o.textContent = c.piece.slice(0, c.ov);
+        body.appendChild(o);
+        body.appendChild(document.createTextNode(c.piece.slice(c.ov)));
+      } else {
+        body.textContent = c.piece;
+      }
+      row.appendChild(ix); row.appendChild(body);
+      out.appendChild(row);
+    });
+  }
+  [clText, clSize, clOv].forEach(function (el) { el.addEventListener("input", chunkLab); });
+  chunkLab();
+
+  /* ---------- laboratório 2: similaridade por cosseno em 2D ---------- */
+  var DOCS = [
+    { name: "Resetar o banco de dados", deg: 20 },
+    { name: "Dimensão do vetor (384)", deg: 75 },
+    { name: "API pública em Go", deg: 150 },
+    { name: "Receita de bolo", deg: 250 }
+  ];
+  var svg = document.getElementById("sim-svg");
+  var ang = document.getElementById("sim-ang");
+  var NS = "http://www.w3.org/2000/svg", C = 150, R = 100;
+  function el(name, attrs, text) {
+    var e = document.createElementNS(NS, name);
+    Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+    if (text) e.textContent = text;
+    return e;
+  }
+  function pt(deg, r) { var a = deg * Math.PI / 180; return [C + r * Math.cos(a), C - r * Math.sin(a)]; }
+  var colors = ["#6bcf8e", "#a78bfa", "#e0925c", "#e8b84a"];
+  svg.appendChild(el("circle", { cx: C, cy: C, r: R, fill: "none", stroke: "#2a374b", "stroke-dasharray": "3 4" }));
+  DOCS.forEach(function (d, i) {
+    var p = pt(d.deg, R), t = pt(d.deg, R + 22);
+    svg.appendChild(el("line", { x1: C, y1: C, x2: p[0], y2: p[1], stroke: colors[i], "stroke-width": 2 }));
+    svg.appendChild(el("circle", { cx: p[0], cy: p[1], r: 4, fill: colors[i] }));
+    svg.appendChild(el("text", { x: t[0], y: t[1] + 4, "text-anchor": "middle", fill: colors[i], "font-size": 11, "font-weight": 700 }, "doc " + (i + 1)));
+  });
+  var qLine = el("line", { x1: C, y1: C, x2: C, y2: C, stroke: "#ffffff", "stroke-width": 3 });
+  var qDot = el("circle", { cx: C, cy: C, r: 5, fill: "#fff" });
+  svg.appendChild(qLine); svg.appendChild(qDot);
+  function simLab() {
+    var q = +ang.value;
+    document.getElementById("sim-ang-v").textContent = q + "°";
+    var p = pt(q, R + 8);
+    qLine.setAttribute("x2", p[0]); qLine.setAttribute("y2", p[1]);
+    qDot.setAttribute("cx", p[0]); qDot.setAttribute("cy", p[1]);
+    var rows = DOCS.map(function (d, i) {
+      return { i: i, name: d.name, cos: Math.cos((q - d.deg) * Math.PI / 180) };
+    }).sort(function (a, b) { return b.cos - a.cos; });
+    var box = document.getElementById("sim-rank");
+    box.innerHTML = "";
+    rows.forEach(function (r, rank) {
+      var row = document.createElement("div");
+      row.className = "row" + (rank === 0 ? " best" : "");
+      row.innerHTML = '<div class="top"><span class="name">doc ' + (r.i + 1) + " · " + r.name +
+        '</span><span class="val">' + r.cos.toFixed(2) + '</span></div><div class="bar"><span style="width:' +
+        Math.max(0, r.cos) * 100 + '%"></span></div>';
+      box.appendChild(row);
+    });
+  }
+  ang.addEventListener("input", simLab);
+  simLab();
+})();
+</script>
+</body>
+</html>

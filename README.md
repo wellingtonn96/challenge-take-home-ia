@@ -110,7 +110,11 @@ Point `RAG_SERVICE_URL_DOCKER` at `http://host.docker.internal:8000` if only the
 
 ## Project docs
 
-- [`visao-projeto.html`](visao-projeto.html) ou [`docs/overview.html`](docs/overview.html) — visão visual (marcos, diagramas, testes; abrir no navegador)
+Site (GitHub Pages): <https://wellingtonn96.github.io/challenge-take-home-ia/> — serve a pasta `docs/` (landing em [`docs/index.html`](docs/index.html)).
+
+- [`docs/overview.html`](docs/overview.html) — visão visual (marcos, diagramas, testes; abrir no navegador)
+- [`docs/tutorial.html`](docs/tutorial.html) — tutorial prático passo a passo: como construir e entender o sistema do zero (abrir no navegador)
+- [`docs/deep-dive.html`](docs/deep-dive.html) — código, conceitos e decisões (abrir no navegador)
 - [`AGENTS.md`](AGENTS.md) — milestones and agent rules
 - [`desafio.md`](desafio.md) — full challenge spec
 - [`services/api/README.md`](services/api/README.md) — Go service notes

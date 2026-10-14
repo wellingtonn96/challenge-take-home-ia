@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Knowledge Assistant — deep dive (código e decisões)</title>
+  <style>
+    :root {
+      --bg: #0c1016;
+      --bg2: #121924;
+      --surface: #1a2332;
+      --surface2: #243044;
+      --text: #e7ecf3;
+      --muted: #9aa8bc;
+      --accent: #5b9fd4;
+      --go: #c97b4a;
+      --py: #6bcf8e;
+      --db: #a78bfa;
+      --llm: #e8b84a;
+      --mcp: #f472b6;
+      --border: #2d3a4f;
+      --radius: 14px;
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --mono: "Cascadia Code", Consolas, ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background:
+        radial-gradient(1200px 500px at 10% -10%, rgba(167, 139, 250, 0.10), transparent 50%),
+        radial-gradient(800px 400px at 100% 0%, rgba(91, 159, 212, 0.10), transparent 45%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 1.5rem 1.15rem 4rem; }
+
+    header.hero {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 2rem 1.75rem 1.5rem;
+      background: linear-gradient(160deg, #1c2440 0%, #121924 55%);
+      margin-bottom: 1.25rem;
+    }
+    header.hero h1 {
+      margin: 0 0 0.4rem;
+      font-size: clamp(1.45rem, 3.4vw, 2.05rem);
+      letter-spacing: -0.03em;
+    }
+    .tagline { color: var(--muted); max-width: 72ch; margin: 0; }
+    .badges { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 1.1rem; }
+    .badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.32rem 0.65rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+    }
+    .badge.py { color: var(--py); border-color: #3d8f5f; background: rgba(61,143,95,.18); }
+    .badge.go { color: var(--go); border-color: #8a5230; background: rgba(201,123,74,.16); }
+    .badge.db { color: var(--db); border-color: #6d5aa8; background: rgba(167,139,250,.16); }
+
+    nav.toc {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem 0.9rem;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.75rem;
+      background: rgba(18, 25, 36, 0.92);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.82rem;
+    }
+    nav.toc a { color: var(--muted); }
+    nav.toc a:hover { color: var(--text); text-decoration: none; }
+
+    section { margin-bottom: 2.85rem; }
+    section > h2 {
+      margin: 0 0 0.4rem;
+      font-size: 1.28rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .lede { color: var(--muted); margin: 0 0 1rem; font-size: 0.95rem; }
+    h3 { margin: 1.15rem 0 0.5rem; font-size: 1.02rem; color: var(--accent); }
+    h3:first-child { margin-top: 0; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.2rem;
+    }
+    .grid-2 { display: grid; gap: 1rem; }
+    @media (min-width: 800px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+    .grid-3 { display: grid; gap: 0.85rem; }
+    @media (min-width: 860px) { .grid-3 { grid-template-columns: 1fr 1fr 1fr; } }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.82em;
+      background: var(--surface2);
+      padding: 0.12em 0.38em;
+      border-radius: 4px;
+    }
+    pre {
+      margin: 0;
+      padding: 0.95rem 1.05rem;
+      overflow-x: auto;
+      background: #0a0e12;
+      font-size: 0.76rem;
+      line-height: 1.5;
+      color: #d7e0ea;
+    }
+    pre code { background: none; padding: 0; font-size: inherit; }
+
+    .snip {
+      margin: 0.75rem 0 1rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #0a0e12;
+    }
+    .snip figcaption {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.45rem 0.75rem;
+      background: #121924;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.75rem;
+    }
+    .snip .path {
+      font-family: var(--mono);
+      color: var(--muted);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .snip .lang {
+      font-size: 0.65rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.15rem 0.45rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .snip .lang.py { color: var(--py); border-color: #3d8f5f; }
+    .snip .lang.go { color: var(--go); border-color: #8a5230; }
+    .snip .lang.sql { color: var(--db); border-color: #6d5aa8; }
+    .snip .lang.json { color: var(--llm); border-color: #8a7028; }
+    .copy {
+      font: inherit;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.18rem 0.5rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+    .copy.ok { color: var(--py); border-color: #3d8f5f; }
+
+    .why {
+      background: rgba(91, 159, 212, 0.08);
+      border: 1px solid #2e4a66;
+      border-left: 3px solid var(--accent);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      margin: 0.75rem 0 0;
+    }
+    .why strong { display: block; color: var(--accent); font-size: 0.88rem; margin-bottom: 0.25rem; }
+    .why p, .why ul { margin: 0; color: var(--muted); font-size: 0.88rem; }
+    .why ul { padding-left: 1.15rem; margin-top: 0.35rem; }
+    .why.trade {
+      background: rgba(232, 184, 74, 0.07);
+      border-color: #5a4a22;
+      border-left-color: var(--llm);
+    }
+    .why.trade strong { color: var(--llm); }
+    .why.warn {
+      background: rgba(244, 114, 182, 0.07);
+      border-color: #5a2d46;
+      border-left-color: var(--mcp);
+    }
+    .why.warn strong { color: var(--mcp); }
+
+    .concept {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.95rem 1.05rem;
+    }
+    .concept h3 { color: var(--text); margin: 0 0 0.35rem; font-size: 0.95rem; }
+    .concept p { margin: 0; color: var(--muted); font-size: 0.88rem; }
+    .concept .k {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      font-weight: 800;
+      color: var(--db);
+      letter-spacing: 0.04em;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th, td { padding: 0.5rem 0.65rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .muted { color: var(--muted); }
+
+    .ascii {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      line-height: 1.45;
+      color: #b8c5d4;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    .call {
+      display: flex;
+      gap: 0.85rem;
+      align-items: flex-start;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1rem;
+      margin-bottom: 0.65rem;
+    }
+    .call .n {
+      font-family: var(--mono);
+      font-weight: 800;
+      color: var(--accent);
+      font-size: 0.85rem;
+      min-width: 2.2rem;
+    }
+    .call p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+    .call strong { color: var(--text); }
+
+    footer {
+      margin-top: 2rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .hl-k { color: #7eb8ea; }
+    .hl-s { color: #9dcf9a; }
+    .hl-c { color: #6b7a90; }
+    .hl-n { color: #c9a0e8; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1>Deep dive — código, conceitos e decisões</h1>
+      <p class="tagline">
+        Visão de baixo nível do Knowledge Assistant. Cada bloco abaixo liga o
+        <em>conceito</em> (o que está acontecendo), o <em>código</em> (onde isso
+        vive no repo) e a <em>decisão</em> (por que foi feito assim e o que se
+        abre mão). Complementa a
+        <a href="overview.html">visão visual</a>.
+      </p>
+      <div class="badges">
+        <span class="badge py">Python RAG</span>
+        <span class="badge go">Go API</span>
+        <span class="badge db">pgvector 384-d</span>
+        <span class="badge">MCP stdio</span>
+        <span class="badge">mesmo run_query()</span>
+      </div>
+    </header>
+
+    <nav class="toc">
+      <a href="#fronteiras">Fronteiras</a>
+      <a href="#schema">Schema</a>
+      <a href="#chunk">Chunking</a>
+      <a href="#embed">Embeddings</a>
+      <a href="#ingest">Ingest</a>
+      <a href="#retrieve">Retrieval</a>
+      <a href="#prompt">Prompt</a>
+      <a href="#go">API Go</a>
+      <a href="#mcp">MCP</a>
+      <a href="#erros">Erros</a>
+      <a href="#testes">Testes</a>
+      <a href="#compose">Compose</a>
+    </nav>
+
+    <!-- ================================================================== -->
+    <section id="fronteiras">
+      <h2>1. Fronteiras de serviço</h2>
+      <p class="lede">
+        O enunciado pede Python para RAG e Go para REST. A decisão de desenho
+        não é “dois apps que fazem a mesma coisa”: é <strong>um núcleo de
+        retrieve+generate</strong> e duas fachadas (HTTP público e MCP).
+      </p>
+      <div class="grid-3">
+        <article class="concept">
+          <span class="k">GO · :8080</span>
+          <h3>Superfície pública</h3>
+          <p>Valida JSON, grava metadata em <code>documents</code>, faz proxy HTTP para o RAG. Não chunka, não embedda, não chama o LLM.</p>
+        </article>
+        <article class="concept">
+          <span class="k">PYTHON · :8000</span>
+          <h3>Dono do RAG</h3>
+          <p>Chunk, MiniLM, pgvector, prompt grounded, Ollama. <code>run_query()</code> é a função única de consulta.</p>
+        </article>
+        <article class="concept">
+          <span class="k">MCP · stdio</span>
+          <h3>Só transporte</h3>
+          <p><code>python -m rag.mcp</code> importa <code>run_query()</code>. Não é um segundo pipeline. Schema do enunciado mapeia <code>content</code> → <code>chunk</code>.</p>
+        </article>
+      </div>
+
+      <figure class="snip">
+        <figcaption>
+          <span class="path">services/rag/rag/app.py — núcleo compartilhado</span>
+          <span class="lang py">Python</span>
+          <button type="button" class="copy">Copiar</button>
+        </figcaption>
+        <pre><code>def run_query(question: str, top_k: int | None = None) -&gt; QueryResponse:
+    """Retrieve + generate. Used by POST /query and the MCP tool."""
+    settings: Settings = app.state.settings
+    k = top_k or settings.retrieval_top_k
+    answer, hits = generate_grounded_answer(
+        question=question,
+        top_k=k,
+        embedder=app.state.embedder,
+        repository=app.state.repository,
+        llm=app.state.llm,
+    )
+    return QueryResponse(answer=answer, sources=[SourceChunk(**hit) for hit in hits])</code></pre>
+      </figure>
+
+      <div class="grid-2">
+        <aside class="why">
+          <strong>Por que HTTP interno Go → Python, e não um monolito?</strong>
+          <p>
+            O desafio exige essa fronteira. Ganho: testes Go mockam um
+            <code>ragclient.Client</code> sem MiniLM/Ollama; testes Python
+            mockam vector store e LLM sem HTTP. Custo: um hop extra e
+            orquestração de ingest em duas transações (veja §5).
+          </p>
+        </aside>
+        <aside class="why trade">
+          <strong>Por que o mesmo Postgres para metadata e vetores?</strong>
+          <p>
+            O enunciado deixa “mesmo DB ou separado”. Um banco só = um Compose
+            service, FK <code>ON DELETE CASCADE</code>, um <code>.env</code>.
+            Abre mão de escalar o vector store isolado (Pinecone/Qdrant) —
+            irrelevante no corpus de sample.
+          </p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <section id="schema">
+      <h2>2. Schema — três tabelas, um contrato de dimensão</h2>
+      <p class="lede">
+        Texto não se busca com <code>LIKE</code> aqui. O documento vira N
+        chunks; cada chunk vira um vetor de <strong>exatamente 384 floats</strong>.
+        Esse número aparece em três lugares e os três têm que bater.
+      </p>
+
+      <div class="card" style="overflow-x:auto; margin-bottom:1rem">
+        <pre class="ascii" style="border:0; padding:0.4rem 0">documents  1 ──&lt;  chunks  1 ── 1  embeddings
+   id, title,           content,              embedding vector(384)
+   source_uri           chunk_index           model_name
+   ON DELETE CASCADE ──────────────►  ON DELETE CASCADE</pre>
+      </div>
+
+      <figure class="snip">
+        <figcaption>
+          <span class="path">db/schema.sql — tipo, unicidade e índice ANN</span>
+          <span class="lang sql">SQL</span>
+          <button type="button" class="copy">Copiar</button>
+        </figcaption>
+        <pre><code>CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE embeddings (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    chunk_id      UUID NOT NULL,
+    embedding     vector(384) NOT NULL,
+    model_name    TEXT NOT NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT uq_embeddings_chunk_id UNIQUE (chunk_id),
+    CONSTRAINT fk_embeddings_chunk
+        FOREIGN KEY (chunk_id) REFERENCES chunks (id) ON DELETE CASCADE
+);
+
+-- Cosine: MiniLM devolve vetores L2-normalizados (veja embedder.py)
+CREATE INDEX idx_embeddings_embedding_hnsw
+    ON embeddings
+    USING hnsw (embedding vector_cosine_ops);</code></pre>
+      </figure>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Contrato dos 384</h3>
+          <table>
+            <thead><tr><th>Onde</th><th>O quê</th></tr></thead>
+            <tbody>
+              <tr><td><code>VECTOR_DIMENSION</code></td><td><code>.env</code> / Settings Python</td></tr>
+              <tr><td><code>EMBEDDING_MODEL</code></td><td><code>all-MiniLM-L6-v2</code> (384-d)</td></tr>
+              <tr><td><code>vector(384)</code></td><td>coluna SQL — tipo rígido</td></tr>
+            </tbody>
+          </table>
+          <p class="muted" style="margin:0.7rem 0 0; font-size:0.86rem">
+            Trocar o modelo sem <code>ALTER</code> + re-embed quebra o ingest:
+            o embedder recusa dimensão diferente, e o Postgres recusa o
+            <code>vector(n)</code> errado.
+          </p>
+        </div>
+        <aside class="why">
+          <strong>Por que HNSW + <code>vector_cosine_ops</code>?</strong>
+          <ul>
+            <li><strong>HNSW</strong> — grafo aproximado (ANN). Bom para latência em corpora pequenos/médios; o índice custa build, não é exact k-NN.</li>
+            <li><strong>Cosseno</strong> — MiniLM é treinado para similaridade de sentença. Com <code>normalize_embeddings=True</code>, cosseno ≡ produto interno. Distância L2 seria outra geometria.</li>
+            <li><strong>Operador <code>&lt;=&gt;</code></strong> no pgvector = distância de cosseno (0 = idêntico). Score HTTP = <code>1 - distância</code> para o cliente ver “maior = mais parecido”.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <aside class="why" style="margin-top:1rem">
+        <strong>Por que <code>UNIQUE (document_id, chunk_index)</code> e <code>UNIQUE (chunk_id)</code>?</strong>
+        <p>
+          Re-ingest de um documento apaga os chunks antigos e reinsere. O único
+          vetor por chunk evita duplicar a mesma janela no ANN. O índice em
+          <code>(document_id, chunk_index)</code> serve o list/debug e o
+          <code>DELETE FROM chunks WHERE document_id = …</code> do re-ingest.
+        </p>
+      </aside>
+    </section>
+
+    <!-- ================================================================== -->
+    <section id="chunk">
+      <h2>3. Chunking — janelas com overlap</h2>
+      <p class="lede">
+        O LLM tem contexto finito e a busca é por <em>trecho</em>, não pelo
+        documento inteiro. Fatia-se o texto em janelas de caracteres
+        (<code>CHUNK_SIZE=500</code>) com overlap (<code>CHUNK_OVERLAP=80</code>).
+      </p>
+
+      <div class="card" style="margin-bottom:1rem">
+        <pre class="ascii" style="border:0; padding:0">texto:  |---------------- 850 chars ----------------|
+chunk 0: [------ 500 ------]
+chunk 1:              [------ 500 ------]   ← recua 80 (overlap)
+chunk 2:                           [-- 250 --]
+
+Por que overlap? Uma frase na fronteira do chunk 0 ainda aparece no 1.
+Sem overlap, a busca pode “cortar” o fato no meio.</pre>
+      </div>
+
+      <figure class="snip">
+        <figcaption>
+          <span class="path">services/rag/rag/chunking.py</span>
+          <span class="lang py">Python</span>
+          <button type="button" class="copy">Copiar</button>
+        </figcaption>
+        <pre><code>def chunk_text(text: str, chunk_size: int, chunk_overlap: int) -&gt; list[str]:
+    """Split text into overlapping character windows."""
+    if chunk_size &lt;= 0:
+        raise ValueError("chunk_size must be positive")
+    if chunk_overlap &lt; 0:
+        raise ValueError("chunk_overlap must be non-negative")
+    if chunk_overlap &gt;= chunk_size:
+        raise ValueError("chunk_overlap must be smaller than chunk_size")
+
+    normalized = text.strip()
+    if not normalized:
+        return []
+
+    chunks, start, length = [], 0, len(normalized)
+    while start &lt; length:
+        end = min(start + chunk_size, length)
+        piece = normalized[start:end].strip()
+        if piece:
+            chunks.append(piece)
+        if end &gt;= length:
+            break
+        start = end - chunk_overlap
+    return chunks</code></pre>
+      </figure>
+
+      <div class="grid-2">
+        <aside class="why">
+          <strong>Por que caracteres, não tokens nem parágrafos?</strong>
+          <p>
+            Corpus de sample é plain text curto. Janela de caracteres é
+            determinística, fácil de testar (<code>test_chunking.py</code>
+            usa <code>"a" * 85</code>) e não puxa um tokenizer. Tokens
+            alinhavam melhor com o LLM; parágrafos falham em FAQs sem
+            quebra. Para PDF longo, o próximo passo seria splitter
+            semântico — fora do escopo.
+          </p>
+        </aside>
+        <aside class="why trade">
+          <strong>Invariantes que o teste trava</strong>
+          <ul>
+            <li>Overlap &lt; size — senão o <code>start</code> não avança (loop infinito).</li>
+            <li>Texto só whitespace → lista vazia → ingest vira 400, não uma linha fantasma no pgvector.</li>
+            <li>Defaults 500/80: ~80–120 tokens, cabe várias frases; overlap ~1 sentença.</li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <section id="embed">
+      <h2>4. Embeddings — o texto vira geometria</h2>
+      <p class="lede">
+        Um embedding é um ponto em ℝ<sup>384</sup>. Trechos sobre o mesmo
+        assunto ficam próximos; a pergunta é embeddada <em>com o mesmo
+        modelo</em> para cair no mesmo espaço.
+      </p>
+
+      <figure class="snip">
+        <figcaption>
+          <span class="path">services/rag/rag/embedder.py</span>
+          <span class="lang py">Python</span>
+          <button type="button" class="copy">Copiar</button>
+        </figcaption>
+        <pre><code>@lru_cache
+def _load_model(model_name: str) -&gt; SentenceTransformer:
+    return SentenceTransformer(model_name)
+
+
+class Embedder:
+    def embed(self, texts: list[str]) -&gt; list[list[float]]:
+        if not texts:
+            return []
+        vectors = self._model.encode(
+            texts,
+            normalize_embeddings=True,  # ||v|| = 1  →  cosine = dot product
+            show_progress_bar=False,
+        )
+        array = np.asarray(vectors, dtype=np.float32)
+        if array.ndim == 1:
+            array = array.reshape(1, -1)
+        if array.shape[1] != self.dimension:
+            raise ValueError(
+                f"embedding dimension {array.shape[1]} != "
+                f"VECTOR_DIMENSION {self.dimension}"
+            )
+        return array.tolist()</code></pre>
+      </figure>
+
+      <div class="grid-2">
+        <aside class="why">
+          <strong>Por que MiniLM local, não OpenAI embeddings?</strong>
+          <p>
+            Zero custo de API, funciona offline no Compose, dimensão pequena
+            (384 vs 1536). Trade-off: primeira subida baixa o modelo Hugging
+            Face (minutos); ingest em CPU é mais lento. A qualidade é
+            suficiente para FAQ/docs curtos do sample.
+          </p>
+        </aside>
+        <aside class="why">
+          <strong>Por que <code>normalize_embeddings=True</code> + check de dim?</strong>
+          <p>
+            Sem normalizar, cosseno e L2 divergem e o índice
+            <code>vector_cosine_ops</code> deixa de ser a métrica “natural”.
+            O check de dimensão falha cedo (ValueError no Python) em vez de
+            um erro opaco do Postgres no INSERT.
+          </p>
+        </aside>
+      </div>
+      <aside class="why warn" style="margin-top:0.85rem">
+        <strong>Por que <code>@lru_cache</code> no load do modelo?</strong>
+        <p>
+          Carregar MiniLM/torch é caro. HTTP FastAPI carrega uma vez no
+          lifespan; MCP <em>atrasa</em> esse load até a primeira tool call
+          (handshake JSON-RPC precisa ser rápido — senão o Claude Desktop
+          acha que o server travou). Ver §9.
+        </p>
+      </aside>
+    </section>
+
+    <!-- ================================================================== -->
+    <section id="ingest">
+      <h2>5. Ingest — duas transações, um rollback cuidadoso</h2>
+      <p class="lede">
+        Go insere a linha de metadata <em>antes</em> de chamar o Python.
+        O Python faz upsert do título, apaga chunks antigos e grava os novos
+        <em>numa transação</em>. Isso não é acid em dois serviços — e o
+        código documenta exatamente o que acontece no timeout.
+      </p>
+
+      <div class="call"><span class="n">01</span><p><strong>Go valida e INSERT.</strong> Gera UUID, grava <code>title</code>, <code>source_uri</code>, <code>content_type</code>. O RAG não conhece <code>source_uri</code>.</p></div>
+      <div class="call"><span class="n">02</span><p><strong>Go POST /ingest no RAG</strong> com o mesmo <code>document_id</code> + texto.</p></div>
+      <div class="call"><span class="n">03</span><p><strong>Python chunk + embed</strong> e, numa transação: upsert <code>documents</code>, <code>DELETE FROM chunks</code> (cascade embeddings), INSERT chunks+vetores.</p></div>
+      <div class="call"><span class="n">04</span><p><strong>Erro HTTP do RAG</strong> → Go apaga a linha. <strong>Timeout</strong> → não apaga: a transação Python ainda pode commitar e recriar o documento.</p></div>
+
+      <figure class="snip">
+        <figcaption>
+          <span class="path">services/api/internal/httpapi/ingest.go</span>
+          <span class="lang go">Go</span>
+          <button type="button" class="copy">Copiar</button>
+        </figcaption>
+        <pre><code>id := uuid.New()
+err := h.repo.Insert(ctx, documents.Document{
+    ID: id, Title: title, SourceURI: sourceURI, ContentType: contentType,
+})
+// Metadata is committed first so source_uri survives the Python upsert,
+// which updates title and updated_at only. An HTTP error from RAG did not
+// commit chunks, so the row is removed. A timeout is left in place because
+// that transaction may still commit and recreate the document.
+resp, err := h.rag.Ingest(ctx, ragclient.IngestRequest{
+    DocumentID: id, Text: body.Text, Title: title,
+})
+if err != nil {
+    if ragclient.ShouldRollback(err) {
+        _ = h.repo.Delete(r.Context(), id)
+    }
+    return mapRAGError(err)
+}
+writeJSON(w, http.StatusCreated, resp)</code></pre>
+      </figure>
+
+      <figure class="snip">
+        <figcaption>
+          <span class="path">services/api/internal/ragclient/client.go — ShouldRollback</span>
+          <span class="lang go">Go</span>
+          <button type="button" class="copy">Copiar</button>
+        </figcaption>
+        <pre><code>func ShouldRollback(err error) bool {
+    var upstream *UpstreamError
+    if errors.As(err, &amp;upstream) {
+        return true // 4xx/5xx: Python não commitou (ou devolveu erro)
+    }
+    if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+        return false
+    }
+    var netErr net.Error
+    if errors.As(err, &amp;netErr) &amp;&amp; netErr.Timeout() {
+        return false
+    }
+    return true // conexão recusada etc. — seguro apagar metadata órfã
+}</code></pre>
+      </figure>
+
+      <figure class="snip">
+        <figcaption>
+          <span class="path">services/rag/rag/repository.py — transação de chunks</span>
+          <span class="lang py">Python</span>
+          <button type="button" class="copy">Copiar</button>
+        </figcaption>
+        <pre><code>with connection() as conn:
+    register_vector(conn)
+    with conn.transaction():
+        conn.execute("""
+            INSERT INTO documents (id, title, content_type)
+            VALUES (%s, %s, 'text/plain')
+            ON CONFLICT (id) DO UPDATE
+            SET title = EXCLUDED.title, updated_at = now()
+        """, (document_id, title))
+        conn.execute("DELETE FROM chunks WHERE document_id = %s", (document_id,))
+        for index, (content, vector) in enumerate(zip(pieces, vectors, strict=True)):
+            row = conn.execute(
+                "INSERT INTO chunks (...) VALUES (...) RETURNING id",
+                (document_id, index, content),
+            ).fetchone()
+            conn.execute(
+                "INSERT INTO embeddings (chunk_id, embedding, model_name) VALUES (%s, %s, %s)",
+                (row["id"], Vector(vector), model_name),
+            )</code></pre>
+      </figure>
+
+      <aside class="why">
+        <strong>Por que o Go insere primeiro, se o Python já faz upsert?</strong>
+        <p>
+          Para preservar <code>source_uri</code> (origem do arquivo / upload).
+          O upsert Python só toca <code>title</code> + <code>updated_at</code> —
+          se o Go não tivesse inserido, o campo ficaria NULL. Re-ingest pelo
+          mesmo UUID substitui chunks (DELETE + INSERT) sem duplicar o
+          documento na listagem.
+        </p>
+      </aside>
+    </section>
+
+    <!-- ================================================================== -->
+    <section id="retrieve">
+      <h2>6. Retrieval — a pergunta no mesmo espaço</h2>
+      <p class="lede">
+        Query ≠ keyword search. Embedda a pergunta, pede ao pgvector os
+        <code>top_k</code> vizinhos (default 5), devolve texto + score.
+        Zero hits → o LLM <em>não é chamado</em>.
+      </p>
+
+      <figure class="snip">
+        <figcaption>
+          <span class="path">services/rag/rag/repository.py — search_similar</span>
+          <span class="lang py">Python</span>
+          <button type="button" class="copy">Copiar</button>
+        </figcaption>
+        <pre><code>SELECT
+    c.id AS chunk_id,
+    c.document_id,
+    c.chunk_index,
+    c.content,
+    1 - (e.embedding &lt;=&gt; %s) AS score
+FROM embeddings e
+INNER JOIN chunks c ON c.id = e.chunk_id
+ORDER BY e.embedding &lt;=&gt; %s
+LIMIT %s</code></pre>
+      </figure>
+
+      <figure class="snip">
+        <figcaption>
+          <span class="path">services/rag/rag/answer.py</span>
+          <span class="lang py">Python</span>
+          <button type="button" class="copy">Copiar</button>
+        </figcaption>
+        <pre><code>def generate_grounded_answer(*, question, top_k, embedder, repository, llm):
+    query_vector = embedder.embed_one(question)
+    hits = repository.search_similar(query_vector, top_k)
+    if not hits:
+        raise NoRelevantChunksError()   # 404 — sem chat()
+    messages = build_chat_messages(question, list(hits))
+    answer = llm.chat(messages)
+    return answer, list(hits)</code></pre>
+      </figure>
+
+      <div class="grid-2">
+        <aside class="why">
+          <strong>Por que score = <code>1 - (a &lt;=&gt; b)</code>?</strong>
+          <p>
+            pgvector ordena por distância (menor = mais perto). A API pública
+            expõe similaridade ∈ (~0, 1]: 1.0 = vetores iguais. O cliente e o
+            MCP mostram “score”, não “distância”.
+          </p>
+        </aside>
+        <aside class="why">
+          <strong>Por que 404 em corpus vazio, não “não sei” do LLM?</strong>
+          <p>
+            O enunciado pede resposta <em>grounded</em>. Se não há chunks, não
+            há contexto — chamar o modelo seria alucinar com conhecimento
+            pré-treinado. <code>NoRelevantChunksError</code> vira HTTP 404
+            <code>no_relevant_chunks</code>. O teste unitário afirma que o
+            spy do LLM <code>called is False</code>.
+          </p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <section id="prompt">
+      <h2>7. Prompt grounded — o LLM só vê os chunks</h2>
+      <p class="lede">
+        Retrieval escolhe o texto; o prompt escolhe as regras. Sem a
+        instrução “não use conhecimento externo”, um modelo local ainda
+        completa com o que memorizou no treino.
+      </p>
+
+      <figure class="snip">
+        <figcaption>
+          <span class="path">services/rag/rag/prompt.py</span>
+          <span class="lang py">Python</span>
+          <button type="button" class="copy">Copiar</button>
+        </figcaption>
+        <pre><code>SYSTEM_PROMPT = (
+    "You are a knowledge assistant. "
+    "Answer only using the provided context. Do not use outside knowledge. "
+    "If the context does not contain the answer, say you do not know."
+)
+
+def build_chat_messages(question: str, chunks: list[dict]) -&gt; list[dict[str, str]]:
+    blocks = []
+    for index, chunk in enumerate(chunks, start=1):
+        blocks.append(
+            f"[{index}] document_id={chunk['document_id']} "
+            f"chunk_index={chunk['chunk_index']}\n{chunk['content']}"
+        )
+    context = "\n\n".join(blocks)
+    user = (
+        "Use only the context below to answer the question. "
+        "If the answer is not in the context, say you do not know.\n\n"
+        f"Context:\n{context}\n\n"
+        f"Question: {question}"
+    )
+    return [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": user},
+    ]</code></pre>
+      </figure>
+
+      <div class="grid-2">
+        <aside class="why">
+          <strong>Por que numerar os chunks no contexto?</strong>
+          <p>
+            Dá âncora ao modelo (“segundo [2]…”) e deixa o log do prompt
+            auditável. As fontes na resposta HTTP/MCP <em>não</em> vêm do
+            modelo — vêm dos <code>hits</code> do pgvector. O LLM não escolhe
+            as sources; o código as anexa.
+          </p>
+        </aside>
+        <aside class="why">
+          <strong>Ollama: local vs cloud no mesmo client</strong>
+          <p>
+            <code>OllamaClient</code> POSTa <code>/api/chat</code> com
+            <code>stream: false</code>. Bearer só vai para host
+            <code>ollama.com</code> — o daemon local rejeita token de cloud.
+            Timeout vira <code>llm_timeout</code> (504); rede cai vira
+            <code>llm_unavailable</code> (503).
+          </p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <section id="go">
+      <h2>8. API Go — fachada idiomática</h2>
+      <p class="lede">
+        <code>cmd/api/main.go</code> só liga pool, client e HTTP server.
+        Handlers em <code>internal/httpapi</code> devolvem <code>error</code>;
+        um <code>wrap</code> traduz para JSON <code>{"error","message"}</code>.
+      </p>
+
+      <figure class="snip">
+        <figcaption>
+          <span class="path">services/api/internal/httpapi/server.go — rotas Go 1.22</span>
+          <span class="lang go">Go</span>
+          <button type="button" class="copy">Copiar</button>
+        </figcaption>
+        <pre><code>mux.Handle("GET /health", h.wrap(h.health))
+mux.Handle("GET /documents", h.wrap(h.listDocuments))
+mux.Handle("DELETE /documents/{id}", h.wrap(h.deleteDocument))
+mux.Handle("POST /ingest", h.wrap(h.ingest))
+mux.Handle("POST /query", h.wrap(h.query))
+
+func (h *handler) wrap(fn func(http.ResponseWriter, *http.Request) error) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        if err := fn(w, r); err != nil {
+            var apiErr *apierror.Error
+            if !errors.As(err, &amp;apiErr) {
+                apiErr = apierror.Internal("internal error")
+            }
+            writeAPIError(w, apiErr)
+        }
+    })
+}</code></pre>
+      </figure>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Interface do RAG — fronteira de teste</h3>
+          <figure class="snip" style="margin:0.5rem 0 0">
+            <figcaption>
+              <span class="path">ragclient/client.go</span>
+              <span class="lang go">Go</span>
+              <button type="button" class="copy">Copiar</button>
+            </figcaption>
+            <pre><code>type Client interface {
+    Ingest(ctx context.Context, req IngestRequest) (IngestResponse, error)
+    Query(ctx context.Context, req QueryRequest) (QueryResponse, error)
+}</code></pre>
+          </figure>
+          <p class="muted" style="margin:0.65rem 0 0; font-size:0.86rem">
+            <code>handlers_test.go</code> usa <code>stubRAG</code>. Os testes
+            cobrem validação, 201, proxy do <code>document_id</code>, 404
+            upstream e rollback — sem Python no PATH.
+          </p>
+        </div>
+        <aside class="why">
+          <strong>Detalhes que não são acidentes</strong>
+          <ul>
+            <li><code>WriteTimeout = RAGClientTimeout + 15s</code> — query espera o LLM; o default de 30s mataria a request.</li>
+            <li><code>captureWriter</code> — ServeMux nativo devolve texto “404 page not found”; o middleware reescreve para JSON.</li>
+            <li><code>mux.ServeHTTP</code> no request original — <code>PathValue("id")</code> só funciona assim (comentário no código).</li>
+            <li>DELETE → <code>204 No Content</code> sem body; CASCADE no SQL apaga chunks e embeddings.</li>
+            <li>Go não busca vetor. Query é validação + proxy.</li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <section id="mcp">
+      <h2>9. MCP — transporte, não segundo RAG</h2>
+      <p class="lede">
+        MCP é JSON-RPC em <strong>stdout</strong>. Qualquer <code>print()</code>
+        ou barra de progresso do Hugging Face no stdout quebra o cliente.
+        Logs vão para stderr; o modelo MiniLM só carrega na primeira chamada
+        da tool.
+      </p>
+
+      <figure class="snip">
+        <figcaption>
+          <span class="path">services/rag/rag/mcp.py</span>
+          <span class="lang py">Python</span>
+          <button type="button" class="copy">Copiar</button>
+        </figcaption>
+        <pre><code>def query_knowledge_base(question: Annotated[str, Field(min_length=1)]) -&gt; KnowledgeBaseResult:
+    cleaned = question.strip()
+    if not cleaned:
+        raise ValueError("question must not be empty")
+
+    # Import here so initialize/list_tools does not load torch / MiniLM.
+    from rag.app import init_runtime, run_query
+
+    init_runtime(register_atexit=True)
+    result = run_query(cleaned)
+
+    return KnowledgeBaseResult(
+        answer=result.answer,
+        sources=[
+            KnowledgeBaseSource(
+                document_id=str(source.document_id),
+                chunk=source.content,   # enunciado: "chunk", HTTP: "content"
+                score=source.score,
+            )
+            for source in result.sources
+        ],
+    )</code></pre>
+      </figure>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Schema do enunciado vs HTTP</h3>
+          <figure class="snip" style="margin:0.5rem 0 0">
+            <figcaption>
+              <span class="path">tool output</span>
+              <span class="lang json">JSON</span>
+              <button type="button" class="copy">Copiar</button>
+            </figcaption>
+            <pre><code>{
+  "answer": "…",
+  "sources": [
+    {
+      "document_id": "uuid",
+      "chunk": "texto do trecho",
+      "score": 0.87
+    }
+  ]
+}</code></pre>
+          </figure>
+        </div>
+        <aside class="why warn">
+          <strong>Por que MCP não entra no Compose?</strong>
+          <p>
+            Claude Desktop (e clientes MCP) <em>spawnam o processo</em> e
+            falam stdio. Um container no Compose não tem quem fale nesse
+            pipe. Postgres e Ollama precisam estar no ar; o corpus já
+            ingerido. Env do MCP tem que apontar para o mesmo DB/Ollama que
+            o serviço RAG — senão a tool consulta um banco vazio.
+          </p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <section id="erros">
+      <h2>10. Erros — códigos estáveis, mensagem humana</h2>
+      <p class="lede">
+        Dois envelopes: FastAPI usa <code>detail: {error, message}</code>;
+        Go unwraps isso e devolve o mesmo par na raiz. Clientes (UI, curl,
+        testes) só precisam de um contrato.
+      </p>
+
+      <div class="card" style="overflow-x:auto">
+        <table>
+          <thead><tr><th>code</th><th>HTTP</th><th>Quando</th><th>Decisão</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>invalid_request</code></td>
+              <td>400</td>
+              <td>title/text/question vazios; <code>top_k</code> fora 1–50</td>
+              <td>Falhar na borda, não no LLM</td>
+            </tr>
+            <tr>
+              <td><code>no_relevant_chunks</code></td>
+              <td>404</td>
+              <td>corpus vazio ou busca sem hits</td>
+              <td>Não alucinar</td>
+            </tr>
+            <tr>
+              <td><code>not_found</code></td>
+              <td>404</td>
+              <td>DELETE de UUID inexistente; rota inexistente</td>
+              <td>JSON, não texto do ServeMux</td>
+            </tr>
+            <tr>
+              <td><code>llm_unavailable</code></td>
+              <td>503</td>
+              <td>Ollama inacessível</td>
+              <td>Retry faz sentido</td>
+            </tr>
+            <tr>
+              <td><code>llm_timeout</code></td>
+              <td>504</td>
+              <td>chat excedeu <code>OLLAMA_TIMEOUT_SECONDS</code></td>
+              <td>Separado de “rede caiu”</td>
+            </tr>
+            <tr>
+              <td><code>llm_error</code></td>
+              <td>502</td>
+              <td>401, body vazio, JSON inválido</td>
+              <td>Upstream falhou de verdade</td>
+            </tr>
+            <tr>
+              <td><code>rag_unavailable</code></td>
+              <td>502</td>
+              <td>Go não alcança o Python</td>
+              <td>Fronteira de serviço visível</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <aside class="why" style="margin-top:1rem">
+        <strong>Por que <code>RAGError.code</code> em vez de <code>except Exception</code>?</strong>
+        <p>
+          O mapa <code>_ERROR_STATUS</code> em <code>app.py</code> traduz
+          domínio → HTTP sem um handler gigante. Testes afirmam o
+          <code>error</code> string, não só o status. Bare <code>except</code>
+          está fora das regras do repo.
+        </p>
+      </aside>
+    </section>
+
+    <!-- ================================================================== -->
+    <section id="testes">
+      <h2>11. Testes — mockar a fronteira certa</h2>
+      <p class="lede">
+        O enunciado pede TDD thinking, não 100% de coverage. Mocka-se o que
+        é lento, caro ou externo; deixa-se real o que é o contrato (SQL,
+        HTTP shape).
+      </p>
+
+      <div class="grid-3">
+        <article class="concept">
+          <span class="k">PYTHON UNIT</span>
+          <h3>Fake store + spy LLM</h3>
+          <p><code>test_retrieval.py</code>: embedding e <code>top_k</code> chegam ao store; lista vazia não chama <code>chat()</code>. <code>test_generate.py</code> / <code>test_prompt.py</code> travam o contrato do prompt.</p>
+        </article>
+        <article class="concept">
+          <span class="k">GO UNIT</span>
+          <h3>stubRepo + stubRAG</h3>
+          <p><code>handlers_test.go</code>: health, ingest 201, list, delete 204, validação, mapeamento de erro upstream. Zero MiniLM.</p>
+        </article>
+        <article class="concept">
+          <span class="k">INTEGRAÇÃO</span>
+          <h3>Postgres real, LLM stub</h3>
+          <p><code>test_integration.py</code>: embedder determinístico 384-d (sem baixar o modelo). Ingest + query contra o schema de verdade. Skip se o DB não estiver no ar.</p>
+        </article>
+      </div>
+
+      <figure class="snip">
+        <figcaption>
+          <span class="path">services/rag/tests/test_retrieval.py — a asserção que importa</span>
+          <span class="lang py">Python</span>
+          <button type="button" class="copy">Copiar</button>
+        </figcaption>
+        <pre><code>def test_empty_vector_store_raises_without_calling_llm():
+    llm = _SpyLLM()
+    with pytest.raises(NoRelevantChunksError):
+        generate_grounded_answer(
+            question="anything",
+            top_k=5,
+            embedder=_FakeEmbedder(),
+            repository=_FakeVectorStore([]),
+            llm=llm,
+        )
+    assert not llm.called</code></pre>
+      </figure>
+
+      <aside class="why">
+        <strong>Por que o embedder da integração é um vetor [1, 0, 0, …]?</strong>
+        <p>
+          O teste quer provar “ingest grava, query lê, o prompt contém o
+          chunk”. Não quer provar qualidade de MiniLM. Vetor constante faz
+          pergunta e documento coincidirem no ANN sem baixar 80MB de pesos.
+          O stub do LLM ainda exige que a palavra “MiniLM” esteja no
+          contexto — senão o grounding quebrou.
+        </p>
+      </aside>
+    </section>
+
+    <!-- ================================================================== -->
+    <section id="compose">
+      <h2>12. Compose e o que ficou de fora</h2>
+      <p class="lede">
+        Um comando sobe db, ollama, rag, api e web. Schema só roda no
+        <em>primeiro</em> start do volume.
+      </p>
+
+      <figure class="snip">
+        <figcaption>
+          <span class="path">docker-compose.yml — bootstrap do schema</span>
+          <span class="lang sql">YAML / SQL</span>
+          <button type="button" class="copy">Copiar</button>
+        </figcaption>
+        <pre><code>db:
+  image: pgvector/pgvector:pg16
+  volumes:
+    - postgres_data:/var/lib/postgresql/data
+    - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+
+api:
+  environment:
+    POSTGRES_HOST: db
+    RAG_SERVICE_URL: http://rag:8000   # hostname da rede Compose
+
+rag:
+  environment:
+    POSTGRES_HOST: db
+    OLLAMA_BASE_URL: http://ollama:11434</code></pre>
+      </figure>
+
+      <div class="grid-2">
+        <aside class="why">
+          <strong>Por que <code>docker compose down -v</code> para reaplicar o schema?</strong>
+          <p>
+            <code>docker-entrypoint-initdb.d</code> só executa em datadir
+            vazio. Mudou <code>vector(384)</code>? Precisa volume novo (ou
+            <code>ALTER</code> + re-embed). É o trade-off de não ter um
+            runner de migrations no take-home.
+          </p>
+        </aside>
+        <aside class="why trade">
+          <strong>Limitações conscientes</strong>
+          <ul>
+            <li>Seed só <code>*.txt</code> — sem pipeline PDF.</li>
+            <li><code>make ingest</code> é idempotente: se já existe documento, não reseeda.</li>
+            <li>REST sem auth (escopo do desafio).</li>
+            <li>MCP no host, não no Compose.</li>
+            <li>ANN sem filtro por metadata além do JOIN — corpus único.</li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+
+    <footer>
+      Arquivo local — abra no navegador.
+      Visão de produto: <a href="overview.html">docs/overview.html</a>
+      · spec: <code>desafio.md</code>
+      · API: <a href="https://github.com/wellingtonn96/challenge-take-home-ia/blob/challenge/wellington/docs/api.md">docs/api.md</a>.
+      Snippets são versões didáticas do código; a fonte da verdade é o repo.
+    </footer>
+  </div>
+
+  <script>
+    document.querySelectorAll(".copy").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const snip = btn.closest(".snip");
+        const text = snip.querySelector("pre").innerText;
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          ta.remove();
+        }
+        const prev = btn.textContent;
+        btn.textContent = "Copiado";
+        btn.classList.add("ok");
+        setTimeout(() => {
+          btn.textContent = prev;
+          btn.classList.remove("ok");
+        }, 1400);
+      });
+    });
+  </script>
+</body>
+</html>
