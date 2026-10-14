@@ -49,7 +49,8 @@ class OllamaClient:
 
     def _headers(self) -> dict[str, str]:
         headers = {"Content-Type": "application/json"}
-        if self._api_key:
+        # Local daemon ignores or rejects cloud Bearer tokens; only send for Ollama Cloud.
+        if self._api_key and uses_ollama_cloud(self._base_label):
             headers["Authorization"] = f"Bearer {self._api_key}"
         return headers
 
@@ -88,11 +89,18 @@ class OllamaClient:
             ) from exc
 
         if response.status_code == 401:
+            if uses_ollama_cloud(self._base_label):
+                raise LLMError(
+                    "llm_error",
+                    "Ollama Cloud rejected the API key (HTTP 401). Create a new key at "
+                    "ollama.com/settings/keys, update OLLAMA_API_KEY in the repo root "
+                    ".env, and restart the RAG service.",
+                )
             raise LLMError(
                 "llm_error",
-                "Ollama Cloud rejected the API key (HTTP 401). Create a new key at "
-                "ollama.com/settings/keys, update OLLAMA_API_KEY in the repo root "
-                ".env, and restart the RAG service.",
+                f"Ollama returned HTTP 401 from {self._base_label}. "
+                "For local Compose use OLLAMA_MODEL=llama3.2 (run make pull-model) "
+                "and leave OLLAMA_API_KEY empty.",
             )
 
         if response.status_code >= 400:
