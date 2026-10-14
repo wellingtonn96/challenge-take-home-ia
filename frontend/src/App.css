@@ -1,0 +1,290 @@
+:root {
+  color-scheme: dark;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  line-height: 1.45;
+  background: #0f1419;
+  color: #e7ecf3;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.layout {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.25rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.5rem;
+}
+
+.muted {
+  color: #9aa7b8;
+  font-size: 0.9rem;
+}
+
+.pill {
+  background: #1c2733;
+  border: 1px solid #2b3a4d;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 1rem;
+}
+
+@media (max-width: 960px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  background: #151c24;
+  border: 1px solid #243041;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.panel h2,
+.panel h3,
+.panel h4 {
+  margin-top: 0;
+}
+
+.stack {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+input,
+textarea,
+button {
+  font: inherit;
+}
+
+input,
+textarea {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #314357;
+  background: #0f1419;
+  color: inherit;
+  padding: 0.55rem 0.65rem;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid #3d6ea8;
+  background: #245f9b;
+  color: white;
+  padding: 0.55rem 0.85rem;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.doc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.doc-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  border: 1px solid #243041;
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+}
+
+.doc-list strong {
+  display: block;
+}
+
+.banner {
+  background: #2a1f1f;
+  border: 1px solid #6b3b3b;
+  border-radius: 8px;
+  padding: 0.65rem;
+}
+
+.answer {
+  margin-top: 1rem;
+  border-top: 1px solid #243041;
+  padding-top: 0.75rem;
+}
+
+.logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logs-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.log-view {
+  margin-top: 0.75rem;
+  height: min(70vh, 720px);
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  background: #0b1015;
+  border: 1px solid #243041;
+  border-radius: 8px;
+  padding: 0.5rem;
+}
+
+.log {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.35rem 0.25rem;
+  border-bottom: 1px solid #1a2430;
+}
+
+.log-meta {
+  color: #7f93ab;
+}
+
+.log-warning .log-meta,
+.log-warn .log-meta {
+  color: #e6b35c;
+}
+
+.log-error .log-meta {
+  color: #f07178;
+}
+
+.logs-actions button.active {
+  background: #2b4a6b;
+  border-color: #4a7ab0;
+}
+
+.trace-focus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  background: #101820;
+  border: 1px solid #2b3a4d;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.trace-only {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.trace-group {
+  border: 1px solid #1f2d3d;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  padding: 0.25rem 0.5rem 0.5rem;
+  background: #0d1218;
+}
+
+.trace-group summary {
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  list-style: none;
+  padding: 0.35rem 0;
+}
+
+.trace-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.trace-id {
+  font-weight: 600;
+  color: #8ec7ff;
+}
+
+.trace-pin {
+  margin-left: auto;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.45rem;
+}
+
+.trace-steps {
+  margin: 0.25rem 0 0;
+  padding-left: 0;
+  list-style: none;
+  border-left: 2px solid #2b4058;
+}
+
+.trace-step {
+  display: grid;
+  grid-template-columns: auto auto auto 1fr;
+  gap: 0.35rem 0.5rem;
+  padding: 0.35rem 0.5rem 0.35rem 0.75rem;
+  border-bottom: 1px solid #152030;
+}
+
+.step-badge {
+  font-size: 0.72rem;
+  background: #1c2a3a;
+  border: 1px solid #334d66;
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+  color: #9fd0ff;
+}
+
+.step-service {
+  color: #7f93ab;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+}
+
+.step-time {
+  color: #5f738a;
+  font-size: 0.72rem;
+}
+
+.step-msg {
+  grid-column: 1 / -1;
+  padding-left: 0.25rem;
+}
