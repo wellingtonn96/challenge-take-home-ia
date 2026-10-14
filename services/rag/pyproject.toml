@@ -11,13 +11,21 @@ dependencies = [
     "pgvector>=0.3.6",
     "pydantic-settings>=2.6.0",
     "sentence-transformers>=3.3.0",
+    "httpx>=0.28.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.3.0",
-    "httpx>=0.28.0",
+    "mcp>=1.9.0,<2",
 ]
+mcp = [
+    # 1.x FastMCP API. mcp 2.x renamed FastMCP to MCPServer.
+    "mcp>=1.9.0,<2",
+]
+
+[project.scripts]
+knowledge-mcp = "rag.mcp:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

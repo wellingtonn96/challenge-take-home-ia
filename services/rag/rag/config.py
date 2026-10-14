@@ -4,8 +4,18 @@ from pathlib import Path
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
 _SERVICE_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _repo_root() -> Path:
+    """Monorepo root when running from services/rag; else service root in the image (/app)."""
+    candidate = _SERVICE_ROOT.parent.parent
+    if (candidate / "docker-compose.yml").is_file():
+        return candidate
+    return _SERVICE_ROOT
+
+
+_REPO_ROOT = _repo_root()
 
 
 class Settings(BaseSettings):
@@ -29,11 +39,29 @@ class Settings(BaseSettings):
     chunk_size: int = Field(default=500, validation_alias="CHUNK_SIZE")
     chunk_overlap: int = Field(default=80, validation_alias="CHUNK_OVERLAP")
     retrieval_top_k: int = Field(default=5, validation_alias="RETRIEVAL_TOP_K")
+    ollama_base_url: str = Field(
+        default="http://localhost:11434",
+        validation_alias="OLLAMA_BASE_URL",
+    )
+    ollama_model: str = Field(default="llama3.2", validation_alias="OLLAMA_MODEL")
+    ollama_api_key: str | None = Field(default=None, validation_alias="OLLAMA_API_KEY")
+    ollama_timeout_seconds: float = Field(
+        default=300.0,
+        gt=0,
+        validation_alias="OLLAMA_TIMEOUT_SECONDS",
+    )
+    log_level: str = Field(default="info", validation_alias="LOG_LEVEL")
     rag_service_host: str = Field(default="0.0.0.0", validation_alias="RAG_SERVICE_HOST")
     rag_service_port: int = Field(default=8000, validation_alias="RAG_SERVICE_PORT")
 
     @model_validator(mode="after")
-    def resolve_database_url(self) -> "Settings":
+    def normalize(self) -> "Settings":
+        if self.ollama_api_key is not None:
+            key = self.ollama_api_key.strip()
+            if len(key) >= 2 and key[0] == key[-1] and key[0] in "\"'":
+                key = key[1:-1].strip()
+            self.ollama_api_key = key or None
+
         if self.database_url and "${" not in self.database_url:
             return self
         self.database_url = (

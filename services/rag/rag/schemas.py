@@ -33,5 +33,18 @@ class SourceChunk(BaseModel):
 
 
 class QueryResponse(BaseModel):
-    answer: str = "TODO"
+    answer: str
     sources: list[SourceChunk]
+
+
+class LogEntryOut(BaseModel):
+    time: str
+    level: str
+    message: str
+    trace_id: str | None = None
+    step: str | None = None
+
+
+class LogsResponse(BaseModel):
+    service: str
+    entries: list[LogEntryOut]

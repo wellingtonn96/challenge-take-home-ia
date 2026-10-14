@@ -1,3 +1,5 @@
+import logging
+from typing import Protocol
 from uuid import UUID
 
 from pgvector import Vector
@@ -5,11 +7,18 @@ from pgvector.psycopg import register_vector
 
 from rag.chunking import chunk_text
 from rag.db import connection
-from rag.embedder import Embedder
+
+
+class _EmbedsText(Protocol):
+    model_name: str
+
+    def embed(self, texts: list[str]) -> list[list[float]]: ...
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentRepository:
-    def __init__(self, embedder: Embedder) -> None:
+    def __init__(self, embedder: _EmbedsText) -> None:
         self._embedder = embedder
 
     def ingest_document(
@@ -23,8 +32,10 @@ class DocumentRepository:
         pieces = chunk_text(text, chunk_size, chunk_overlap)
         if not pieces:
             raise ValueError("document text produced no chunks after chunking")
+        logger.info("chunked document chunks=%s", len(pieces), extra={"step": "chunk"})
 
         vectors = self._embedder.embed(pieces)
+        logger.info("embedded chunks model=%s", self._embedder.model_name, extra={"step": "embed.batch"})
         model_name = self._embedder.model_name
 
         with connection() as conn:
