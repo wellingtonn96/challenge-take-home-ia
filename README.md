@@ -1,71 +1,117 @@
-# AI Knowledge Assistant (take-home challenge)
+# AI Knowledge Assistant (take-home)
 
-Production-minded RAG assistant: Python RAG service, Go REST API, PostgreSQL + pgvector, MCP tool. Work in progress by milestone (E0 → E5).
+RAG over a document corpus: **Python** retrieval + generation, **Go** public REST API, **PostgreSQL + pgvector**, optional **React** UI, and an **MCP** stdio tool (`query_knowledge_base`).
 
-## Prerequisites
+## Quick start (clean clone)
 
-- [Docker](https://docs.docker.com/get-docker/) with Compose v2
-- Git
+Prerequisites: Docker Compose v2, Python 3.11+ on the host (for `make ingest` / wait scripts), `make` (optional but recommended).
 
-## Setup (E1 — database only)
+```bash
+cp .env.example .env
+docker compose up -d --build
+make pull-model    # once: downloads OLLAMA_MODEL into the ollama container
+make ingest        # loads data/sample/*.txt when the corpus is empty
+```
 
-1. Copy environment file:
+Demo query (replace port if `API_PORT` ≠ 8080):
 
-   ```bash
-   cp .env.example .env
-   ```
+```bash
+curl -s http://localhost:8080/query \
+  -H "Content-Type: application/json" \
+  -d '{"question":"How does ingestion work?"}'
+```
 
-2. Start PostgreSQL with pgvector:
+Or one shot: `make demo` (up + pull model + seed).
 
-   ```bash
-   docker compose up -d
-   ```
+| Service | URL |
+| --- | --- |
+| API | `http://localhost:${API_PORT:-8080}` |
+| RAG (internal) | `http://localhost:8000` |
+| UI | `http://localhost:5173` |
+| Ollama | `http://localhost:11434` |
+| Postgres | `localhost:5432` |
 
-3. Wait until the `db` service is healthy, then verify schema:
+First RAG start downloads the **embedding** model (`all-MiniLM-L6-v2`); allow several minutes on a cold machine.
 
-   ```bash
-   docker compose exec db psql -U knowledge -d knowledge_assistant -c "\dt"
-   docker compose exec db psql -U knowledge -d knowledge_assistant -c "\d+ embeddings"
-   docker compose exec db psql -U knowledge -d knowledge_assistant -c "\dx"
-   ```
+API reference: [`docs/api.md`](docs/api.md).
 
-   Expected: tables `documents`, `chunks`, `embeddings`; extension `vector`; column `embedding` type `vector(384)`.
+## Architecture
 
-### Vector dimension
+```
+                    ┌─────────────┐
+  Browser / curl ──►│  Go API     │──metadata──► PostgreSQL + pgvector
+  (React UI)        │  :8080      │                    ▲
+                    └──────┬──────┘                    │
+                           │ HTTP                        │ chunks + vectors
+                           ▼                             │
+                    ┌─────────────┐      embed/search    │
+                    │  Python RAG │──────────────────────┘
+                    │  :8000      │
+                    └──────┬──────┘
+                           │ /api/chat
+                           ▼
+                    ┌─────────────┐
+                    │   Ollama    │
+                    │  :11434     │
+                    └─────────────┘
 
-Default embedding model: **all-MiniLM-L6-v2** → **384** dimensions. This matches `VECTOR_DIMENSION` in `.env` and `embeddings.embedding vector(384)` in [`db/schema.sql`](db/schema.sql). Changing the model requires updating all three and re-embedding documents.
+  Claude Desktop ──stdio──► python -m rag.mcp ──► run_query() (same as POST /query)
+```
 
-### Reset database (dev)
+- **Go API** owns document metadata (`GET`/`DELETE /documents`) and proxies ingest/query to RAG.
+- **Python RAG** chunks, embeds, retrieves top-k, calls Ollama for grounded answers.
+- **MCP** imports `run_query()` in-process; Postgres + Ollama env match the RAG service ([`services/rag/README.md`](services/rag/README.md#mcp-query_knowledge_base)).
 
-Init SQL runs only on a fresh data volume:
+## Design choices & trade-offs
+
+| Topic | Choice | Trade-off |
+| --- | --- | --- |
+| Metadata vs vectors | Same Postgres DB | Simpler ops and FK cascades; API and RAG share one pool config |
+| Embeddings | Local MiniLM (384-d) | No API cost; CPU ingest slower than hosted embeddings |
+| ANN index | HNSW + cosine | Fast search; index build cost on large corpora |
+| Go ↔ Python | HTTP internal API | Clear boundary and independent tests; extra hop vs monolith |
+| LLM | Ollama in Compose | Works offline; first `ollama pull` + cold start latency |
+| Ingest orchestration | API inserts row, then RAG | `source_uri` preserved; rollback on RAG HTTP error, not on timeout |
+
+**Vector dimension:** `VECTOR_DIMENSION`, embedding model, and `embeddings.embedding vector(n)` in [`db/schema.sql`](db/schema.sql) must stay aligned (default **384**).
+
+## Limitations
+
+- Sample seed is **plain text** only (`data/sample/*.txt`); no PDF pipeline in core scope.
+- `make ingest` skips seeding if any document already exists (idempotent, not a full re-sync).
+- Large cloud models need `OLLAMA_API_KEY` and high `OLLAMA_TIMEOUT_SECONDS`; default Compose path uses **local** `llama3.2`.
+- MCP runs on the **host**; it does not start with `docker compose` (stdio adapter for Claude Desktop).
+- No auth on REST endpoints (challenge scope).
+
+## Development
+
+Reset DB (re-applies `schema.sql` on empty volume):
 
 ```bash
 docker compose down -v
-docker compose up -d
+docker compose up -d --build
 ```
 
-## Project docs
-
-- [`AGENTS.md`](AGENTS.md) — stack, boundaries, and agent rules
-- [`desafio.md`](desafio.md) — full challenge requirements
-
-## Architecture (planned)
-
-```
-Client → Go API → Python RAG → PostgreSQL (metadata + pgvector)
-MCP tool ────────────────┘
-```
-
-### RAG service (E2)
+Tests:
 
 ```bash
-cd services/rag
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
+make test-rag
+make test-api
+```
+
+### Run RAG on the host (optional)
+
+```bash
+cd services/rag && pip install -e ".[dev]"
 uvicorn rag.app:app --reload --port 8000
 ```
 
-Endpoints: `GET /health`, `POST /ingest`, `POST /query` (retrieval only; `answer` is `"TODO"` until generation is wired). See [`services/rag/README.md`](services/rag/README.md).
+Point `RAG_SERVICE_URL_DOCKER` at `http://host.docker.internal:8000` if only the API runs in Docker.
 
-Further sections (Go API, MCP, tests, full `docker compose` stack) will be added in later milestones.
+## Project docs
+
+- [`visao-projeto.html`](visao-projeto.html) ou [`docs/overview.html`](docs/overview.html) — visão visual (marcos, diagramas, testes; abrir no navegador)
+- [`AGENTS.md`](AGENTS.md) — milestones and agent rules
+- [`desafio.md`](desafio.md) — full challenge spec
+- [`services/api/README.md`](services/api/README.md) — Go service notes
+- [`frontend/README.md`](frontend/README.md) — React UI

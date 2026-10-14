@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Knowledge Assistant — o que foi feito</title>
+  <style>
+    :root {
+      --bg: #0c1016;
+      --bg2: #121924;
+      --surface: #1a2332;
+      --surface2: #243044;
+      --text: #e7ecf3;
+      --muted: #9aa8bc;
+      --accent: #5b9fd4;
+      --go: #c97b4a;
+      --py: #6bcf8e;
+      --db: #a78bfa;
+      --llm: #e8b84a;
+      --mcp: #f472b6;
+      --border: #2d3a4f;
+      --radius: 14px;
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --mono: "Cascadia Code", Consolas, ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background:
+        radial-gradient(1200px 500px at 10% -10%, rgba(91, 159, 212, 0.12), transparent 50%),
+        radial-gradient(800px 400px at 100% 0%, rgba(107, 207, 142, 0.08), transparent 45%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 1.5rem 1.15rem 4rem; }
+
+    header.hero {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 2rem 1.75rem 1.5rem;
+      background: linear-gradient(160deg, #1c2b40 0%, #121924 55%);
+      margin-bottom: 1.25rem;
+    }
+    header.hero h1 {
+      margin: 0 0 0.4rem;
+      font-size: clamp(1.55rem, 3.6vw, 2.15rem);
+      letter-spacing: -0.03em;
+    }
+    .tagline { color: var(--muted); max-width: 62ch; margin: 0; }
+    .badges { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 1.1rem; }
+    .badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.32rem 0.65rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+    }
+    .badge.ok { color: var(--py); border-color: #3d8f5f; background: rgba(61,143,95,.18); }
+
+    nav.toc {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem 0.9rem;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.75rem;
+      background: rgba(18, 25, 36, 0.92);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.86rem;
+    }
+    nav.toc a { color: var(--muted); }
+    nav.toc a:hover { color: var(--text); text-decoration: none; }
+
+    section { margin-bottom: 2.75rem; }
+    section > h2 {
+      margin: 0 0 0.85rem;
+      font-size: 1.3rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--border);
+    }
+    h3 { margin: 0 0 0.55rem; font-size: 1rem; color: var(--accent); }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.2rem;
+    }
+    .grid-2 { display: grid; gap: 1rem; }
+    @media (min-width: 760px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.82em;
+      background: var(--surface2);
+      padding: 0.12em 0.38em;
+      border-radius: 4px;
+    }
+    pre {
+      margin: 0.6rem 0 0;
+      padding: 0.9rem 1rem;
+      overflow-x: auto;
+      background: #0a0e12;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+    pre code { background: none; padding: 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { padding: 0.55rem 0.7rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .muted { color: var(--muted); }
+
+    /* Story strip */
+    .story {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.65rem;
+      margin-top: 1rem;
+    }
+    @media (max-width: 700px) { .story { grid-template-columns: 1fr; } }
+    .story article {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+    .story .n {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .story h3 { color: var(--text); margin: 0.35rem 0 0.3rem; }
+
+    /* Architecture */
+    .arch-board {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.15rem;
+    }
+    .arch-board svg { width: 100%; height: auto; display: block; }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.7rem 1.1rem;
+      margin-top: 0.9rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .legend i {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      margin-right: 0.35rem;
+      vertical-align: -1px;
+      border: 1px solid transparent;
+    }
+    .node-info {
+      margin-top: 0.9rem;
+      min-height: 4.2rem;
+      padding: 0.85rem 1rem;
+      background: #0a0e12;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .node-info strong { color: var(--text); }
+    .hint-click { font-size: 0.78rem; color: var(--muted); margin: 0 0 0.65rem; }
+
+    /* Flow player */
+    .tabs { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.85rem; }
+    .tabs button {
+      font: inherit;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 0.4rem 0.85rem;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    .tabs button[aria-selected="true"] {
+      background: var(--accent);
+      color: #0c1016;
+      border-color: var(--accent);
+    }
+    .pipeline {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: stretch;
+      gap: 0.4rem;
+      margin: 0.75rem 0 1rem;
+    }
+    .pipestep {
+      flex: 1 1 110px;
+      min-width: 100px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.7rem 0.65rem;
+      font-size: 0.82rem;
+      opacity: 0.45;
+      transition: opacity .2s, border-color .2s, transform .2s;
+    }
+    .pipestep.on {
+      opacity: 1;
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+    .pipestep .idx {
+      display: block;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--accent);
+      margin-bottom: 0.2rem;
+    }
+    .flow-copy {
+      color: var(--muted);
+      font-size: 0.95rem;
+      min-height: 3.4rem;
+    }
+    .flow-nav { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+    .flow-nav button {
+      font: inherit;
+      cursor: pointer;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      padding: 0.4rem 0.8rem;
+    }
+    .flow-nav button.primary { background: var(--accent); color: #0c1016; border-color: var(--accent); font-weight: 700; }
+
+    /* Timeline */
+    .timeline { display: grid; gap: 0.65rem; }
+    .ms {
+      display: grid;
+      grid-template-columns: 3.2rem 1fr;
+      gap: 0.85rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1rem;
+    }
+    .ms-id {
+      font-family: var(--mono);
+      font-weight: 800;
+      color: var(--accent);
+      font-size: 0.95rem;
+    }
+    .ms h4 { margin: 0 0 0.25rem; font-size: 0.98rem; }
+    .ms p, .ms ul { margin: 0; color: var(--muted); font-size: 0.88rem; }
+    .ms ul { padding-left: 1.15rem; margin-top: 0.35rem; }
+    .ok-pill {
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--py);
+      margin-left: 0.4rem;
+    }
+
+    .progress {
+      margin-top: 1.15rem;
+      background: rgba(0,0,0,.28);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+    }
+    .progress-bar { height: 8px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+    .progress-bar span {
+      display: block;
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #3d8f5f, var(--py));
+    }
+    .progress-label { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted); margin-bottom: 0.4rem; }
+
+    footer {
+      margin-top: 2rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1>O que foi construído</h1>
+      <p class="tagline">
+        Assistente de conhecimento com RAG: você pergunta em linguagem natural, o sistema
+        recupera trechos dos documentos e o LLM responde <strong>só com esse contexto</strong>.
+        Take-home completo (E1–E7): banco, pipeline Python, API Go, MCP, testes e Compose.
+      </p>
+      <div class="badges">
+        <span class="badge ok">E1–E7 feitos</span>
+        <span class="badge">Go API :8080</span>
+        <span class="badge">Python RAG :8000</span>
+        <span class="badge">pgvector 384-d</span>
+        <span class="badge">MCP stdio</span>
+      </div>
+      <div class="progress">
+        <div class="progress-label"><span>Marcos do desafio</span><span>7 / 7</span></div>
+        <div class="progress-bar"><span></span></div>
+      </div>
+    </header>
+
+    <nav class="toc">
+      <a href="#ideia">Ideia</a>
+      <a href="#arquitetura">Arquitetura</a>
+      <a href="#fluxos">Fluxos</a>
+      <a href="#mcp">MCP</a>
+      <a href="#marcos">Marcos</a>
+      <a href="#schema">Schema</a>
+      <a href="#api">API</a>
+      <a href="#comandos">Rodar</a>
+    </nav>
+
+    <section id="ideia">
+      <h2>A ideia em três passos</h2>
+      <div class="story">
+        <article>
+          <span class="n">01 — ingerir</span>
+          <h3>O texto vira chunks + vetores</h3>
+          <p class="muted" style="margin:0">Documento entra pela API Go. O Python fatia, gera embeddings MiniLM (384 dims) e grava no Postgres.</p>
+        </article>
+        <article>
+          <span class="n">02 — buscar</span>
+          <h3>A pergunta vira um vetor</h3>
+          <p class="muted" style="margin:0">pgvector (HNSW + cosseno) devolve os trechos mais parecidos. Sem trechos → 404, o LLM não inventa.</p>
+        </article>
+        <article>
+          <span class="n">03 — responder</span>
+          <h3>Ollama só usa o contexto</h3>
+          <p class="muted" style="margin:0">Prompt grounded + fontes (<code>answer</code> + <code>sources</code>). HTTP e MCP passam pelo mesmo <code>run_query()</code>.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="arquitetura">
+      <h2>Arquitetura — dois jeitos de entrar, um núcleo</h2>
+      <p class="hint-click">Clique num bloco do diagrama para ver o papel de cada peça.</p>
+      <div class="arch-board">
+        <svg viewBox="0 0 980 420" role="img" aria-label="Diagrama da arquitetura">
+          <defs>
+            <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <path d="M0,0 L8,4 L0,8 z" fill="#9aa8bc"/>
+            </marker>
+          </defs>
+          <!-- HTTP path -->
+          <text x="24" y="28" fill="#9aa8bc" font-size="13" font-family="Segoe UI, sans-serif">Caminho HTTP (UI / curl)</text>
+          <g class="hot" data-key="ui" tabindex="0" style="cursor:pointer">
+            <rect x="20" y="44" width="150" height="70" rx="10" fill="#243044" stroke="#5b9fd4" stroke-width="2"/>
+            <text x="95" y="74" text-anchor="middle" fill="#e7ecf3" font-size="14" font-weight="700">React / curl</text>
+            <text x="95" y="94" text-anchor="middle" fill="#9aa8bc" font-size="11">cliente :5173</text>
+          </g>
+          <line x1="170" y1="79" x2="214" y2="79" stroke="#9aa8bc" stroke-width="2" marker-end="url(#arr)"/>
+          <text x="192" y="68" text-anchor="middle" fill="#6b7a90" font-size="10">REST</text>
+          <g class="hot" data-key="go" tabindex="0" style="cursor:pointer">
+            <rect x="220" y="44" width="170" height="70" rx="10" fill="#243044" stroke="#c97b4a" stroke-width="2"/>
+            <text x="305" y="74" text-anchor="middle" fill="#e7ecf3" font-size="14" font-weight="700">Go API</text>
+            <text x="305" y="94" text-anchor="middle" fill="#9aa8bc" font-size="11">:8080 · metadata</text>
+          </g>
+          <line x1="390" y1="79" x2="434" y2="79" stroke="#9aa8bc" stroke-width="2" marker-end="url(#arr)"/>
+          <text x="412" y="68" text-anchor="middle" fill="#6b7a90" font-size="10">HTTP interno</text>
+          <g class="hot" data-key="rag" tabindex="0" style="cursor:pointer">
+            <rect x="440" y="44" width="200" height="70" rx="10" fill="#243044" stroke="#6bcf8e" stroke-width="2"/>
+            <text x="540" y="74" text-anchor="middle" fill="#e7ecf3" font-size="14" font-weight="700">Python RAG</text>
+            <text x="540" y="94" text-anchor="middle" fill="#9aa8bc" font-size="11">:8000 · run_query()</text>
+          </g>
+          <line x1="640" y1="79" x2="684" y2="79" stroke="#9aa8bc" stroke-width="2" marker-end="url(#arr)"/>
+          <text x="662" y="68" text-anchor="middle" fill="#6b7a90" font-size="10">/api/chat</text>
+          <g class="hot" data-key="llm" tabindex="0" style="cursor:pointer">
+            <rect x="690" y="44" width="160" height="70" rx="10" fill="#243044" stroke="#e8b84a" stroke-width="2"/>
+            <text x="770" y="74" text-anchor="middle" fill="#e7ecf3" font-size="14" font-weight="700">Ollama</text>
+            <text x="770" y="94" text-anchor="middle" fill="#9aa8bc" font-size="11">:11434</text>
+          </g>
+
+          <!-- DB -->
+          <line x1="305" y1="114" x2="305" y2="168" stroke="#9aa8bc" stroke-width="2" marker-end="url(#arr)"/>
+          <line x1="540" y1="114" x2="540" y2="168" stroke="#9aa8bc" stroke-width="2" marker-end="url(#arr)"/>
+          <g class="hot" data-key="db" tabindex="0" style="cursor:pointer">
+            <rect x="220" y="176" width="420" height="64" rx="10" fill="#243044" stroke="#a78bfa" stroke-width="2"/>
+            <text x="430" y="204" text-anchor="middle" fill="#e7ecf3" font-size="14" font-weight="700">PostgreSQL 16 + pgvector</text>
+            <text x="430" y="224" text-anchor="middle" fill="#9aa8bc" font-size="11">documents · chunks · embeddings vector(384) · HNSW</text>
+          </g>
+          <text x="248" y="164" fill="#6b7a90" font-size="10">SQL metadata</text>
+          <text x="552" y="164" fill="#6b7a90" font-size="10">chunks + vetores</text>
+
+          <!-- MCP path -->
+          <text x="24" y="292" fill="#9aa8bc" font-size="13" font-family="Segoe UI, sans-serif">Caminho MCP (agentes)</text>
+          <g class="hot" data-key="claude" tabindex="0" style="cursor:pointer">
+            <rect x="20" y="308" width="190" height="70" rx="10" fill="#243044" stroke="#f472b6" stroke-width="2" stroke-dasharray="6 4"/>
+            <text x="115" y="338" text-anchor="middle" fill="#e7ecf3" font-size="14" font-weight="700">Claude Desktop</text>
+            <text x="115" y="358" text-anchor="middle" fill="#9aa8bc" font-size="11">cliente MCP</text>
+          </g>
+          <line x1="210" y1="343" x2="254" y2="343" stroke="#f472b6" stroke-width="2" marker-end="url(#arr)"/>
+          <text x="232" y="332" text-anchor="middle" fill="#f472b6" font-size="10">stdio</text>
+          <g class="hot" data-key="mcp" tabindex="0" style="cursor:pointer">
+            <rect x="260" y="308" width="200" height="70" rx="10" fill="#243044" stroke="#f472b6" stroke-width="2"/>
+            <text x="360" y="338" text-anchor="middle" fill="#e7ecf3" font-size="14" font-weight="700">python -m rag.mcp</text>
+            <text x="360" y="358" text-anchor="middle" fill="#9aa8bc" font-size="11">query_knowledge_base</text>
+          </g>
+          <line x1="460" y1="343" x2="504" y2="343" stroke="#f472b6" stroke-width="2" marker-end="url(#arr)"/>
+          <text x="482" y="332" text-anchor="middle" fill="#f472b6" font-size="10">import</text>
+          <g class="hot" data-key="runq" tabindex="0" style="cursor:pointer">
+            <rect x="510" y="308" width="250" height="70" rx="10" fill="#1a3328" stroke="#6bcf8e" stroke-width="2"/>
+            <text x="635" y="338" text-anchor="middle" fill="#e7ecf3" font-size="14" font-weight="700">run_query()</text>
+            <text x="635" y="358" text-anchor="middle" fill="#9aa8bc" font-size="11">mesmo núcleo do POST /query</text>
+          </g>
+          <path d="M635 308 L635 250 L540 250 L540 114" fill="none" stroke="#6bcf8e" stroke-width="1.5" stroke-dasharray="4 4"/>
+        </svg>
+        <div class="legend">
+          <span><i style="background:#5b9fd4"></i>Cliente HTTP</span>
+          <span><i style="background:#c97b4a"></i>Go</span>
+          <span><i style="background:#6bcf8e"></i>Python RAG</span>
+          <span><i style="background:#a78bfa"></i>Postgres</span>
+          <span><i style="background:#e8b84a"></i>LLM</span>
+          <span><i style="background:#f472b6"></i>MCP</span>
+        </div>
+        <div class="node-info" id="node-info">Clique num bloco. HTTP e MCP convergem em <strong>run_query()</strong> — retrieval não é duplicado.</div>
+      </div>
+    </section>
+
+    <section id="fluxos">
+      <h2>Fluxos — passo a passo</h2>
+      <div class="card">
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" data-flow="ingest" aria-selected="true">Ingestão</button>
+          <button type="button" role="tab" data-flow="query">Consulta HTTP</button>
+          <button type="button" role="tab" data-flow="mcp">Consulta MCP</button>
+        </div>
+        <div id="pipeline" class="pipeline"></div>
+        <p class="flow-copy" id="flow-copy"></p>
+        <div class="flow-nav">
+          <button type="button" id="prev">Anterior</button>
+          <button type="button" class="primary" id="next">Próximo passo</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="mcp">
+      <h2>MCP — o que é, na prática</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Não é um segundo RAG</h3>
+          <p class="muted" style="margin:0">
+            Claude Desktop sobe <code>python -m rag.mcp</code> por <strong>stdio</strong> (JSON-RPC no stdout).
+            A tool <code>query_knowledge_base</code> importa <code>run_query()</code>.
+            Uvicorn pode estar parado; Postgres e Ollama precisam estar no ar, e o corpus já ingerido.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Schema da tool (enunciado)</h3>
+          <pre><code>Input:  { "question": string }
+Output: { "answer": string,
+          "sources": [{ "document_id", "chunk", "score" }] }</code></pre>
+          <p class="muted" style="margin:0.6rem 0 0; font-size:0.88rem">
+            No HTTP a fonte se chama <code>content</code>; o MCP mapeia para <code>chunk</code>.
+            MiniLM só carrega na <em>primeira</em> chamada da tool (handshake rápido).
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="marcos">
+      <h2>Marcos E1–E7</h2>
+      <div class="timeline">
+        <article class="ms"><span class="ms-id">E1</span><div>
+          <h4>Banco <span class="ok-pill">feito</span></h4>
+          <p>Postgres 16 + pgvector. <code>documents</code>, <code>chunks</code>, <code>embeddings vector(384)</code>, HNSW cosine, CASCADE.</p>
+        </div></article>
+        <article class="ms"><span class="ms-id">E2</span><div>
+          <h4>RAG Python <span class="ok-pill">feito</span></h4>
+          <p>Chunk com overlap, MiniLM, repositório pgvector, <code>POST /ingest</code> e estrutura de <code>/query</code>.</p>
+        </div></article>
+        <article class="ms"><span class="ms-id">E3</span><div>
+          <h4>LLM grounded <span class="ok-pill">feito</span></h4>
+          <p>Ollama, prompt “só use o contexto”, <code>answer</code> + <code>sources</code>. Corpus vazio → 404, sem alucinação.</p>
+        </div></article>
+        <article class="ms"><span class="ms-id">E4</span><div>
+          <h4>API Go <span class="ok-pill">feito</span></h4>
+          <p>Fachada REST: health, documents, ingest, query, delete. Metadata no Postgres; RAG só por HTTP interno. Erros <code>{error, message}</code>.</p>
+        </div></article>
+        <article class="ms"><span class="ms-id">E5</span><div>
+          <h4>MCP <span class="ok-pill">feito</span></h4>
+          <p><code>query_knowledge_base</code> reutiliza <code>run_query()</code>. Config Claude Desktop em <code>services/rag/README.md</code>.</p>
+        </div></article>
+        <article class="ms"><span class="ms-id">E6</span><div>
+          <h4>Testes <span class="ok-pill">feito</span></h4>
+          <p>Mocks no vector store, LLM e cliente RAG; um teste de integração com Postgres real (LLM stub).</p>
+        </div></article>
+        <article class="ms"><span class="ms-id">E7</span><div>
+          <h4>Stack + seed <span class="ok-pill">feito</span></h4>
+          <p>Compose (db, ollama, rag, api, web), <code>make ingest</code> em <code>data/sample/</code>, <code>docs/api.md</code>.</p>
+        </div></article>
+      </div>
+    </section>
+
+    <section id="schema">
+      <h2>Como o texto vira busca</h2>
+      <div class="card" style="overflow-x:auto">
+        <svg viewBox="0 0 720 180" width="100%" height="auto" aria-label="Modelo de dados">
+          <rect x="20" y="40" width="180" height="80" rx="10" fill="#243044" stroke="#5b9fd4" stroke-width="2"/>
+          <text x="110" y="74" text-anchor="middle" fill="#e7ecf3" font-weight="700" font-size="15">documents</text>
+          <text x="110" y="96" text-anchor="middle" fill="#9aa8bc" font-size="11">id · title · uri</text>
+          <rect x="270" y="40" width="180" height="80" rx="10" fill="#243044" stroke="#6bcf8e" stroke-width="2"/>
+          <text x="360" y="74" text-anchor="middle" fill="#e7ecf3" font-weight="700" font-size="15">chunks</text>
+          <text x="360" y="96" text-anchor="middle" fill="#9aa8bc" font-size="11">content · index</text>
+          <rect x="520" y="40" width="180" height="80" rx="10" fill="#243044" stroke="#a78bfa" stroke-width="2"/>
+          <text x="610" y="74" text-anchor="middle" fill="#e7ecf3" font-weight="700" font-size="15">embeddings</text>
+          <text x="610" y="96" text-anchor="middle" fill="#9aa8bc" font-size="11">vector(384) · HNSW</text>
+          <line x1="200" y1="80" x2="270" y2="80" stroke="#9aa8bc" stroke-width="2"/>
+          <line x1="450" y1="80" x2="520" y2="80" stroke="#9aa8bc" stroke-width="2"/>
+          <text x="360" y="154" text-anchor="middle" fill="#9aa8bc" font-size="12">1 documento → N chunks → 1 vetor por chunk · ON DELETE CASCADE</text>
+        </svg>
+      </div>
+    </section>
+
+    <section id="api">
+      <h2>API pública (Go) e papéis</h2>
+      <div class="grid-2">
+        <div class="card">
+          <table>
+            <thead><tr><th>Método</th><th>Rota</th><th>Papel</th></tr></thead>
+            <tbody>
+              <tr><td><code>GET</code></td><td><code>/health</code></td><td>API + Postgres</td></tr>
+              <tr><td><code>GET</code></td><td><code>/documents</code></td><td>Lista metadata</td></tr>
+              <tr><td><code>POST</code></td><td><code>/ingest</code></td><td>Documento → RAG</td></tr>
+              <tr><td><code>POST</code></td><td><code>/query</code></td><td>Pergunta → RAG</td></tr>
+              <tr><td><code>DELETE</code></td><td><code>/documents/:id</code></td><td>Cascade vetores</td></tr>
+              <tr><td><code>GET</code></td><td><code>/logs</code></td><td>Observabilidade UI</td></tr>
+            </tbody>
+          </table>
+          <p class="muted" style="margin:0.7rem 0 0; font-size:0.88rem">Referência: <a href="api.md">docs/api.md</a>. Erros sempre <code>{"error","message"}</code>.</p>
+        </div>
+        <div class="card">
+          <h3>Por que Go + Python</h3>
+          <ul class="muted" style="margin:0; padding-left:1.15rem; font-size:0.9rem">
+            <li>Go: HTTP público, validação, metadata.</li>
+            <li>Python: chunk, embed, busca, LLM — uma implementação.</li>
+            <li>Mesmo Postgres (ops simples + CASCADE), hop HTTP extra vs monolito.</li>
+            <li>MiniLM local: sem custo de embedding; ingest mais lento.</li>
+            <li>MCP no host (stdio), não sobe no Compose. Sem auth (escopo do desafio).</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="comandos">
+      <h2>Como ver funcionando</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Stack</h3>
+          <pre><code>cp .env.example .env
+docker compose up -d --build
+make pull-model
+make ingest</code></pre>
+        </div>
+        <div class="card">
+          <h3>Perguntar</h3>
+          <pre><code>curl -s http://localhost:8080/query \
+  -H "Content-Type: application/json" \
+  -d '{"question":"How does ingestion work?"}'</code></pre>
+          <p class="muted" style="margin:0.6rem 0 0; font-size:0.88rem">
+            UI: <code>http://localhost:5173</code> · API <code>:8080</code> · RAG <code>:8000</code>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      Arquivo local — abra <code>visao-projeto.html</code> ou este <code>docs/overview.html</code> no navegador.
+      Spec: <code>desafio.md</code> · MCP no Claude: <code>services/rag/README.md</code>.
+    </footer>
+  </div>
+
+  <script>
+    const NODES = {
+      ui: "<strong>React / curl</strong> — cliente humano. Ingest, query e lista passam pela API Go, não pelo Python direto.",
+      go: "<strong>Go API</strong> — superfície pública. Valida JSON, grava metadata em documents, faz proxy HTTP do ingest/query para o RAG.",
+      rag: "<strong>Python RAG</strong> — chunk, MiniLM, pgvector, prompt grounded e Ollama. Dono de retrieve + generate.",
+      llm: "<strong>Ollama</strong> — só gera o texto final a partir dos chunks. Local no Compose ou cloud com API key.",
+      db: "<strong>PostgreSQL + pgvector</strong> — um banco para metadata (Go) e vetores (RAG). Delete em documents cascade chunks/embeddings.",
+      claude: "<strong>Claude Desktop</strong> — cliente MCP. Sobe o processo stdio; não fala com :8080.",
+      mcp: "<strong>rag.mcp</strong> — adapter de transporte. Tool query_knowledge_base; logs no stderr para não quebrar JSON-RPC.",
+      runq: "<strong>run_query()</strong> — função única. HTTP POST /query e MCP chamam a mesma retrieve+generate."
+    };
+    const info = document.getElementById("node-info");
+    document.querySelectorAll(".hot").forEach((el) => {
+      const show = () => { info.innerHTML = NODES[el.dataset.key] || ""; };
+      el.addEventListener("click", show);
+      el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(); } });
+    });
+
+    const FLOWS = {
+      ingest: [
+        { t: "Cliente", d: "POST /ingest na API Go com title + text (e source_uri opcional)." },
+        { t: "Metadata", d: "Go insere a linha em documents (título, uri, content_type)." },
+        { t: "Proxy RAG", d: "Go chama POST /ingest no Python com o mesmo document_id." },
+        { t: "Chunk + embed", d: "RAG fatia o texto, gera vetores MiniLM 384-d e grava chunks + embeddings." },
+        { t: "Rollback", d: "Se o RAG responder erro HTTP, a API apaga o metadata. Timeout não apaga (a transação Python pode ter commitado)." }
+      ],
+      query: [
+        { t: "Pergunta", d: "POST /query { question, top_k? } na API Go (UI ou curl)." },
+        { t: "Repasse", d: "Go valida e encaminha ao RAG. Não busca vetor nem chama LLM." },
+        { t: "Embed", d: "A pergunta vira um vetor MiniLM, igual aos chunks." },
+        { t: "Busca", d: "pgvector devolve top-k por cosseno (HNSW). Zero hits → 404 no_relevant_chunks." },
+        { t: "Geração", d: "Prompt grounded + Ollama. JSON: answer + sources (content, score, ids)." }
+      ],
+      mcp: [
+        { t: "Spawn", d: "Claude Desktop inicia python -m rag.mcp (stdio). Handshake não carrega MiniLM." },
+        { t: "Tool", d: "O modelo chama query_knowledge_base({ question })." },
+        { t: "Import", d: "Na primeira chamada: init_runtime + import de run_query() — mesmo código do POST /query." },
+        { t: "RAG", d: "Embed → pgvector → Ollama, idêntico ao caminho HTTP." },
+        { t: "Schema", d: "Resposta no formato do enunciado: sources[].chunk (não content)." }
+      ]
+    };
+
+    let flow = "ingest";
+    let step = 0;
+    const pipeline = document.getElementById("pipeline");
+    const copy = document.getElementById("flow-copy");
+
+    function render() {
+      const steps = FLOWS[flow];
+      pipeline.innerHTML = steps.map((s, i) =>
+        `<div class="pipestep${i <= step ? " on" : ""}"><span class="idx">${String(i + 1).padStart(2, "0")}</span>${s.t}</div>`
+      ).join("");
+      copy.innerHTML = `<strong>${steps[step].t}.</strong> ${steps[step].d}`;
+    }
+
+    document.querySelectorAll("[data-flow]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        flow = btn.dataset.flow;
+        step = 0;
+        document.querySelectorAll("[data-flow]").forEach((b) => b.setAttribute("aria-selected", b === btn ? "true" : "false"));
+        render();
+      });
+    });
+    document.getElementById("next").addEventListener("click", () => {
+      step = Math.min(step + 1, FLOWS[flow].length - 1);
+      render();
+    });
+    document.getElementById("prev").addEventListener("click", () => {
+      step = Math.max(step - 1, 0);
+      render();
+    });
+    render();
+  </script>
+</body>
+</html>

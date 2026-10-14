@@ -30,9 +30,9 @@ Build an **AI-powered Knowledge Assistant**: RAG over a document corpus, REST AP
 
 | Sample corpus | Plain text (later PDF optional) | `data/sample/` |
 
-| MCP server | Python or Go (reuse RAG logic) | TBD under `services/` |
+| MCP server | Python stdio (`python -m rag.mcp`) | `services/rag/rag/mcp.py` |
 
-| Orchestration | Docker Compose | `docker-compose.yml` (DB only for E1) |
+| Orchestration | Docker Compose | `docker-compose.yml` (db, ollama, rag, api, web) |
 
 
 
@@ -44,7 +44,7 @@ Build an **AI-powered Knowledge Assistant**: RAG over a document corpus, REST AP
 
 - **Python RAG** is an internal HTTP service; Go calls it — no duplicated retrieval/generation logic.
 
-- **MCP** calls the same RAG entrypoints as the API (shared library or HTTP), not a second implementation.
+- **MCP** imports `run_query()` from the RAG package (stdio tool `query_knowledge_base`). Same retrieval as `POST /query`; not a second implementation.
 
 
 
@@ -88,7 +88,7 @@ ANN index: HNSW with `vector_cosine_ops` (cosine similarity, typical for normali
 
 ```
 
-services/rag/     # ingest, chunk, embed, retrieve, generate
+services/rag/     # ingest, chunk, embed, retrieve, generate; MCP stdio (`python -m rag.mcp`)
 
 services/api/     # Go REST API
 
@@ -150,19 +150,26 @@ docker compose exec db psql -U knowledge -d knowledge_assistant -c "\dx"
 
 - **E1 (done):** Postgres + pgvector, `schema.sql` (`documents`, `chunks`, `embeddings`).
 
-- **E2 (done):** Python RAG service in `services/rag/` — pool, chunk/embed, pgvector repo, `POST /ingest`, `POST /query` (retrieval; answer stub).
+- **E2 (done):** Python RAG service in `services/rag/` — pool, chunk/embed, pgvector repo, `POST /ingest`, `POST /query`.
 
-- **Next (E3+):** Go API, generation, MCP, full compose stack.
+- **E3 (done):** Ollama chat client, grounded prompt, `POST /query` returns `answer` + `sources`; empty corpus is 404.
+
+- **E4 (done):** Go API in `services/api/` — `GET /health`, `GET /documents`, `POST /ingest`, `POST /query`, `DELETE /documents/{id}`. Compose service `api` (DB + API). RAG still runs on the host.
+
+- **E5 (done):** MCP stdio in `services/rag` — tool `query_knowledge_base` imports `run_query()` (same path as `POST /query`). Claude Desktop config in `services/rag/README.md`.
+
+- **E6 (done):** tests — `test_retrieval.py` / `test_generate.py` (Python unit boundaries), `httpapi/handlers_test.go` (Go handlers + stub RAG), `test_integration.py` (Postgres ingest + query, LLM stub).
+
+- **E7 (done):** full Compose (db, ollama, rag, api), `make ingest` + `data/sample/`, [`docs/api.md`](docs/api.md), README diagram/trade-offs.
 
 
 
-## Commands (to be added later)
+## Commands
 
-
-
-- `make ingest` or compose seed — load `data/sample/` into the corpus.
-
-- Tests: `pytest` in `services/rag/`, `go test ./...` in `services/api/`.
+- `docker compose up -d --build` — full stack.
+- `make pull-model` — `ollama pull` for `OLLAMA_MODEL` in the Compose ollama service.
+- `make ingest` — load `data/sample/*.txt` via `POST /ingest` when the corpus is empty.
+- Tests: `make test-rag` / `make test-api`, or `pytest` in `services/rag/`; Go tests run in the `golang` image (see `services/api/README.md`).
 
 
 

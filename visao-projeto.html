@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Knowledge Assistant — Abrir visão do projeto</title>
+  <style>
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #0f1419;
+      color: #e7ecf3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 1.5rem;
+    }
+    .box {
+      max-width: 420px;
+      text-align: center;
+      background: #1a2332;
+      border: 1px solid #2d3a4f;
+      border-radius: 14px;
+      padding: 2rem 1.75rem;
+    }
+    h1 { font-size: 1.35rem; margin: 0 0 0.75rem; }
+    p { color: #9aa8bc; font-size: 0.95rem; line-height: 1.5; margin: 0 0 1.5rem; }
+    a.btn {
+      display: inline-block;
+      background: #5b9fd4;
+      color: #0f1419;
+      font-weight: 700;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      text-decoration: none;
+    }
+    a.btn:hover { filter: brightness(1.08); }
+    .hint { margin-top: 1.25rem; font-size: 0.8rem; color: #6b7a90; }
+    code { font-size: 0.85em; }
+  </style>
+  <script>
+    if (location.search.indexOf("noauto") === -1) {
+      location.replace("docs/overview.html");
+    }
+  </script>
+</head>
+<body>
+  <div class="box">
+    <h1>Visão do projeto</h1>
+    <p>
+      Diagrama clicável, fluxos passo a passo (ingest, query HTTP, MCP) e marcos E1–E7.
+    </p>
+    <a class="btn" href="docs/overview.html">Abrir documentação visual</a>
+    <p class="hint">Se não redirecionar automaticamente, use o botão acima ou abra <code>docs/overview.html</code>.</p>
+  </div>
+</body>
+</html>

@@ -15,7 +15,7 @@ CREATE TABLE documents (
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-COMMENT ON TABLE documents IS 'Ingested document metadata exposed by the REST API.';
+COMMENT ON TABLE documents IS 'Document metadata. The Go API inserts and deletes rows; RAG ingest upserts the title and writes chunks. Deleting a row cascades chunks and embeddings.';
 COMMENT ON COLUMN documents.id IS 'Stable document identifier (UUID).';
 COMMENT ON COLUMN documents.title IS 'Human-readable title or filename.';
 COMMENT ON COLUMN documents.source_uri IS 'Optional origin path, URL, or upload reference.';
